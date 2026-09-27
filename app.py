@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="Pro Digital Library",
     page_icon="📚",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # --- STATE MANAGEMENT ---
@@ -31,17 +31,24 @@ if "search_input" not in st.session_state:
 if "current_page" not in st.session_state:
     st.session_state.current_page = 1
 
-# CSS STATIS LIGHT MODE (LIGHTWEIGHT, CEBAT, RESPONSIVE HP GRID 2 KOLOM)
+# Pustaka Pribadi (Saved Books & Reading Progress)
+if "saved_books" not in st.session_state:
+    st.session_state.saved_books = {}  # {b_id: {title, author, cover}}
+if "reading_progress" not in st.session_state:
+    st.session_state.reading_progress = (
+        {}
+    )  # {b_id: {title, author, cover, progress_pct}}
+if "active_view" not in st.session_state:
+    st.session_state.active_view = "catalog"  # 'catalog' or 'my_library'
+
+# CSS STATIS LIGHT MODE (CLEAN, FAST, RESPONSIVE 2 KOLOM DI HP)
 st.markdown(
     """
     <style>
-    /* Light Theme Clean Background */
     .stApp {
         background-color: #f8fafc !important;
         color: #0f172a !important;
     }
-    
-    /* Header Styling */
     .f15-header {
         font-family: 'serif', 'Georgia', 'Times New Roman';
         font-size: 26px;
@@ -54,8 +61,6 @@ st.markdown(
         color: #64748b;
         margin-bottom: 16px;
     }
-
-    /* Card Buku Light Mode */
     .book-card-f15 {
         background-color: #ffffff;
         border: 1px solid #e2e8f0;
@@ -114,8 +119,13 @@ st.markdown(
         border-radius: 12px;
         margin-bottom: 8px;
     }
-
-    /* Responsive Grid: 2 Kolom Sejajar di Layar HP */
+    .progress-card {
+        background-color: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 12px;
+    }
     @media (max-width: 640px) {
         [data-testid="column"] {
             width: 50% !important;
@@ -131,8 +141,6 @@ st.markdown(
         .cover-box-f15 { height: 130px !important; }
         .title-f15 { font-size: 12px !important; height: 32px !important; }
     }
-    
-    /* Tombol Style Custom Light */
     .stButton>button {
         background-color: #ffffff !important;
         color: #0f172a !important;
@@ -151,17 +159,95 @@ st.markdown(
 )
 
 # ==========================================
-# 1. MODE BACA LAYAR PENUH (FULLSCREEN E-READER)
+# SIDEBAR: NAVIGASI & KATEGORI LENGKAP
+# ==========================================
+with st.sidebar:
+    st.title("📚 Navigasi Menu")
+
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        if st.button("🌐 Jelajah", use_container_width=True):
+            st.session_state.active_view = "catalog"
+            st.rerun()
+    with col_m2:
+        saved_count = len(st.session_state.saved_books)
+        if st.button(f"🔖 Buku Saya ({saved_count})", use_container_width=True):
+            st.session_state.active_view = "my_library"
+            st.rerun()
+
+    st.divider()
+    st.header("✨ Kategori Lengkap")
+
+    categories = [
+        {"label": "🩺 Ilmu Medis & Kesehatan", "query": "Medicine"},
+        {"label": "🧠 Pengembangan Diri & Sukses", "query": "Success"},
+        {"label": "💡 Filsafat & Psikologi", "query": "Philosophy"},
+        {"label": "📈 Bisnis & Ekonomi", "query": "Economics"},
+        {"label": "🔍 Petualangan & Detektif", "query": "Holmes"},
+        {"label": "🚀 Sains & Fiksi Ilmiah", "query": "Science"},
+        {"label": "📜 Sejarah & Biografi", "query": "History"},
+        {"label": "🏰 Fantasi & Dongeng", "query": "Wonderland"},
+        {"label": "🎭 Romance & Klasik", "query": "Love"},
+        {"label": "🏛️ Politik & Hukum", "query": "Politics"},
+    ]
+
+    for cat in categories:
+        if st.button(cat["label"], use_container_width=True):
+            st.session_state.search_input = cat["query"]
+            st.session_state.current_page = 1
+            st.session_state.active_view = "catalog"
+            st.rerun()
+
+    st.divider()
+
+    if st.button("🎲 Pilihkan Buku Acak", use_container_width=True):
+        random_queries = [
+            "Secret",
+            "Health",
+            "Mind",
+            "Power",
+            "Life",
+            "Doctor",
+            "World",
+            "Art",
+            "Mystery",
+        ]
+        st.session_state.search_input = random.choice(random_queries)
+        st.session_state.current_page = 1
+        st.session_state.active_view = "catalog"
+        st.rerun()
+
+    if st.session_state.search_input:
+        if st.button("❌ Tampilkan Semua Buku", use_container_width=True):
+            st.session_state.search_input = ""
+            st.session_state.current_page = 1
+            st.rerun()
+
+# ==========================================
+# 1. MODE BACA BUKU (READER)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
     b_title = st.session_state.selected_book_title
     b_author = st.session_state.selected_book_author
 
-    col_back, _ = st.columns([1, 4])
+    col_back, col_save = st.columns([2, 1])
     with col_back:
         if st.button("⬅️ Kembali ke Katalog", use_container_width=True):
             st.session_state.selected_book_id = None
+            st.rerun()
+    with col_save:
+        is_saved = b_id in st.session_state.saved_books
+        save_label = "📌 Tersimpan di Buku Saya" if is_saved else "🔖 Simpan Buku"
+        if st.button(save_label, use_container_width=True):
+            if is_saved:
+                del st.session_state.saved_books[b_id]
+            else:
+                st.session_state.saved_books[b_id] = {
+                    "title": b_title,
+                    "author": b_author,
+                    "cover": f"https://www.gutenberg.org/cache/epub/{b_id}/pg{b_id}.cover.medium.jpg",
+                }
             st.rerun()
 
     st.markdown("---")
@@ -170,20 +256,28 @@ if st.session_state.selected_book_id is not None:
     )
     st.caption(f"Penulis: {b_author} | ID Buku: #{b_id}")
 
+    # Pengatur Progress Baca
+    curr_prog = st.session_state.reading_progress.get(b_id, {}).get(
+        "progress_pct", 0
+    )
+    new_prog = st.slider("📊 Update Progress Membaca Anda (%):", 0, 100, curr_prog)
+    if new_prog != curr_prog:
+        st.session_state.reading_progress[b_id] = {
+            "title": b_title,
+            "author": b_author,
+            "cover": f"https://www.gutenberg.org/cache/epub/{b_id}/pg{b_id}.cover.medium.jpg",
+            "progress_pct": new_prog,
+        }
+
     read_tab1, read_tab2 = st.tabs(
         ["📖 E-Reader Layar Penuh", "📄 Teks Polos (Plain Text)"]
     )
 
     with read_tab1:
-        st.info("💡 Memuat e-reader resmi...")
         reader_url = (
             f"https://www.gutenberg.org/files/{b_id}/{b_id}-h/{b_id}-h.htm"
         )
-        fallback_url = f"https://www.gutenberg.org/ebooks/{b_id}.html.images"
         components.iframe(reader_url, height=750, scrolling=True)
-        st.caption(
-            f"Jika tampilan tidak muncul, [buka buku di tab baru]({fallback_url})"
-        )
 
     with read_tab2:
         txt_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-0.txt"
@@ -192,52 +286,83 @@ if st.session_state.selected_book_id is not None:
         )
 
 # ==========================================
-# 2. KATALOG UTAMA (LIGHT MODE CLEAN)
+# 2. HALAMAN "BUKU SAYA" (PUSTAKA & PROGRESS BACA)
+# ==========================================
+elif st.session_state.active_view == "my_library":
+    st.markdown(
+        "<div class='f15-header'>📖 Buku Saya</div>", unsafe_allow_html=True
+    )
+    st.markdown(
+        "<div class='f15-sub'>Daftar Buku Yang Sedang Dibaca & Koleksi Disimpan</div>",
+        unsafe_allow_html=True,
+    )
+
+    # SEC 1: SEDANG DIBACA (PROGRESS BACA)
+    st.subheader("🔥 Lanjut Baca")
+    reading_list = st.session_state.reading_progress
+
+    if reading_list:
+        for r_id, r_info in reading_list.items():
+            col_img, col_det = st.columns([1, 4])
+            with col_img:
+                st.image(r_info["cover"], width=100)
+            with col_det:
+                st.write(f"**{r_info['title']}**")
+                st.caption(f"oleh {r_info['author']}")
+                st.progress(r_info["progress_pct"] / 100)
+                st.write(f"**{r_info['progress_pct']}% selesai**")
+                if st.button("📖 Lanjutkan Membaca", key=f"cont_{r_id}"):
+                    st.session_state.selected_book_id = r_id
+                    st.session_state.selected_book_title = r_info["title"]
+                    st.session_state.selected_book_author = r_info["author"]
+                    st.rerun()
+            st.divider()
+    else:
+        st.info(
+            "Belum ada buku yang sedang dibaca. Buka buku di katalog dan atur progress bacanya!"
+        )
+
+    # SEC 2: BUKU DISIMPAN (BOOKMARK)
+    st.subheader("🔖 Buku Yang Disimpan")
+    saved_dict = st.session_state.saved_books
+
+    if saved_dict:
+        saved_items = list(saved_dict.items())
+        cols_per_row = 4
+        for i in range(0, len(saved_items), cols_per_row):
+            cols = st.columns(cols_per_row)
+            for j in range(cols_per_row):
+                if i + j < len(saved_items):
+                    s_id, s_info = saved_items[i + j]
+                    with cols[j]:
+                        st.markdown(
+                            f"""
+                            <div class="book-card-f15">
+                                <div class="cover-box-f15">
+                                    <img src="{s_info['cover']}" class="cover-img-f15" onerror="this.src='https://via.placeholder.com/150x200?text=No+Cover'">
+                                </div>
+                                <div class="title-f15">{s_info['title']}</div>
+                                <div class="author-f15">oleh {s_info['author']}</div>
+                            </div>
+                        """,
+                            unsafe_allow_html=True,
+                        )
+                        if st.button("📖 Baca", key=f"read_saved_{s_id}"):
+                            st.session_state.selected_book_id = s_id
+                            st.session_state.selected_book_title = s_info[
+                                "title"
+                            ]
+                            st.session_state.selected_book_author = s_info[
+                                "author"
+                            ]
+                            st.rerun()
+    else:
+        st.info("Belum ada buku yang disimpan di bookmark.")
+
+# ==========================================
+# 3. KATALOG UTAMA
 # ==========================================
 else:
-    # --- SIDEBAR (REKOMENDASI TOPIK) ---
-    with st.sidebar:
-        st.header("✨ Kategori Pilihan")
-
-        topics = [
-            {"label": "🔍 Petualangan & Detektif", "query": "Holmes"},
-            {"label": "🚀 Sains & Fiksi Ilmiah", "query": "Science"},
-            {"label": "📜 Sejarah & Klasik", "query": "History"},
-            {"label": "🏰 Fantasi & Dongeng", "query": "Wonderland"},
-            {"label": "🎭 Romance & Drama", "query": "Love"},
-        ]
-
-        for t in topics:
-            if st.button(t["label"], use_container_width=True):
-                st.session_state.search_input = t["query"]
-                st.session_state.current_page = 1
-                st.rerun()
-
-        st.divider()
-
-        if st.button("🎲 Pilihkan Buku Acak", use_container_width=True):
-            random_queries = [
-                "Secret",
-                "King",
-                "World",
-                "Art",
-                "Mystery",
-                "Island",
-                "Story",
-                "Man",
-                "Life",
-            ]
-            st.session_state.search_input = random.choice(random_queries)
-            st.session_state.current_page = 1
-            st.rerun()
-
-        if st.session_state.search_input:
-            if st.button("❌ Tampilkan Semua Buku", use_container_width=True):
-                st.session_state.search_input = ""
-                st.session_state.current_page = 1
-                st.rerun()
-
-    # --- HEADER LIGHT STYLE ---
     st.markdown(
         "<div class='f15-header'>Pro Digital Library</div>",
         unsafe_allow_html=True,
@@ -247,11 +372,10 @@ else:
         unsafe_allow_html=True,
     )
 
-    # Kolom Pencarian Utama
     search_query = st.text_input(
         "",
         value=st.session_state.search_input,
-        placeholder="🔍 Cari Judul, Penulis, atau Topik Buku...",
+        placeholder="🔍 Cari Judul, Penulis, Topik, Medis, Pengembangan Diri...",
         label_visibility="collapsed",
     )
 
@@ -261,7 +385,6 @@ else:
 
     query_clean = search_query.strip()
 
-    # AMBIL DATA SAMPAI 70.000 BUKU
     raw_books = engine.search_books(
         query=query_clean, limit=70000 if query_clean else 70000
     )
@@ -275,14 +398,12 @@ else:
         if st.session_state.current_page > total_pages:
             st.session_state.current_page = 1
 
-        # MENGHITUNG INDEKS BUKU UNTUK HALAMAN AKTIF
         start_idx = (st.session_state.current_page - 1) * ITEMS_PER_PAGE
         end_idx = start_idx + ITEMS_PER_PAGE
         page_books = raw_books[start_idx:end_idx]
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # RENDER GRID BUKU (2 KOLOM DI HP, 4 KOLOM DI LAPTOP)
         cols_per_row = 4
         for i in range(0, len(page_books), cols_per_row):
             cols = st.columns(cols_per_row)
@@ -294,7 +415,6 @@ else:
                     b_author = b["author"]
                     cover_url = b["cover"]
 
-                    # Hitung estimasi durasi baca dengan aman
                     try:
                         read_time = (int(b_id) % 12) + 8
                     except (ValueError, TypeError):
@@ -331,11 +451,8 @@ else:
 
                         st.write("")
 
-        # ==========================================
-        # 3. NAVIGASI HALAMAN PROFESIONAL DI PALING BAWAH
-        # ==========================================
+        # NAVIGASI HALAMAN BAWAH
         st.markdown("---")
-
         st.caption(
             f"Menampilkan buku {start_idx + 1:,} - {min(end_idx, total_books):,} dari total {total_books:,} koleksi."
         )
