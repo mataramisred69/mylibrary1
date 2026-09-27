@@ -292,11 +292,11 @@ else:
                     b_author = b["author"]
                     cover_url = b["cover"]
 
-                    # Estimasi durasi baca variatif agar terasa hidup
-                 try:
-                     read_time = (int(b_id) % 12) + 8
-                except (ValueError, TypeError):
-                     read_time = (len(str(b_title)) % 12) + 8
+                    # Hitung estimasi durasi baca dengan aman
+                    try:
+                        read_time = (int(b_id) % 12) + 8
+                    except (ValueError, TypeError):
+                        read_time = (len(str(b_title)) % 12) + 8
 
                     with cols[j]:
                         st.markdown(
