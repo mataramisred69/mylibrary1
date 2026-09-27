@@ -13,7 +13,7 @@ def get_engine():
 engine = get_engine()
 
 st.set_page_config(
-    page_title="F15 Digital Library",
+    page_title="Pro Digital Library",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -31,14 +31,14 @@ if "search_input" not in st.session_state:
 if "current_page" not in st.session_state:
     st.session_state.current_page = 1
 
-# CSS STATIS LIGHTWEIGHT (DARK MODE F15 LIBRARY + RESPONSIVE HP GRID 2 KOLOM)
+# CSS STATIS LIGHT MODE (LIGHTWEIGHT, CEBAT, RESPONSIVE HP GRID 2 KOLOM)
 st.markdown(
     """
     <style>
-    /* Dark Theme Static Background */
+    /* Light Theme Clean Background */
     .stApp {
-        background-color: #0d0e12 !important;
-        color: #f1f5f9 !important;
+        background-color: #f8fafc !important;
+        color: #0f172a !important;
     }
     
     /* Header Styling */
@@ -46,23 +46,23 @@ st.markdown(
         font-family: 'serif', 'Georgia', 'Times New Roman';
         font-size: 26px;
         font-weight: 700;
-        color: #ffffff;
+        color: #0f172a;
         margin-bottom: 2px;
     }
     .f15-sub {
         font-size: 13px;
-        color: #94a3b8;
+        color: #64748b;
         margin-bottom: 16px;
     }
 
-    /* Card Buku F15 Library */
+    /* Card Buku Light Mode */
     .book-card-f15 {
-        background-color: #16181e;
-        border: 1px solid #262932;
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 10px;
         margin-bottom: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -73,7 +73,7 @@ st.markdown(
         height: 160px;
         border-radius: 8px;
         overflow: hidden;
-        background-color: #111216;
+        background-color: #f1f5f9;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -88,7 +88,7 @@ st.markdown(
         font-family: 'serif', 'Georgia', 'Times New Roman';
         font-size: 13px;
         font-weight: 600;
-        color: #ffffff;
+        color: #0f172a;
         height: 36px;
         line-height: 1.3;
         overflow: hidden;
@@ -99,7 +99,7 @@ st.markdown(
     }
     .author-f15 {
         font-size: 11px;
-        color: #94a3b8;
+        color: #64748b;
         margin-bottom: 6px;
         white-space: nowrap;
         overflow: hidden;
@@ -107,8 +107,8 @@ st.markdown(
     }
     .tag-f15 {
         display: inline-block;
-        background-color: #222530;
-        color: #cbd5e1;
+        background-color: #f1f5f9;
+        color: #475569;
         font-size: 10px;
         padding: 2px 8px;
         border-radius: 12px;
@@ -132,18 +132,18 @@ st.markdown(
         .title-f15 { font-size: 12px !important; height: 32px !important; }
     }
     
-    /* Tombol Style Custom */
+    /* Tombol Style Custom Light */
     .stButton>button {
-        background-color: #1f232d !important;
-        color: #f1f5f9 !important;
-        border: 1px solid #333846 !important;
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
         border-radius: 8px !important;
         font-weight: 500 !important;
     }
     .stButton>button:hover {
-        background-color: #2a2f3d !important;
-        border-color: #6366f1 !important;
-        color: #ffffff !important;
+        background-color: #f1f5f9 !important;
+        border-color: #3b82f6 !important;
+        color: #1d4ed8 !important;
     }
     </style>
 """,
@@ -192,7 +192,7 @@ if st.session_state.selected_book_id is not None:
         )
 
 # ==========================================
-# 2. KATALOG UTAMA (STYLE F15 LIBRARY)
+# 2. KATALOG UTAMA (LIGHT MODE CLEAN)
 # ==========================================
 else:
     # --- SIDEBAR (REKOMENDASI TOPIK) ---
@@ -237,9 +237,9 @@ else:
                 st.session_state.current_page = 1
                 st.rerun()
 
-    # --- HEADER F15 STYLE ---
+    # --- HEADER LIGHT STYLE ---
     st.markdown(
-        "<div class='f15-header'>F15 Digital Library</div>",
+        "<div class='f15-header'>Pro Digital Library</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -376,7 +376,7 @@ else:
                 st.rerun()
 
         st.markdown(
-            f"<div style='text-align: center; font-size: 11px; color: #94a3b8; margin-top: 4px;'>Halaman {st.session_state.current_page} dari {total_pages:,}</div>",
+            f"<div style='text-align: center; font-size: 11px; color: #64748b; margin-top: 4px;'>Halaman {st.session_state.current_page} dari {total_pages:,}</div>",
             unsafe_allow_html=True,
         )
 
