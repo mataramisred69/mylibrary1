@@ -1,12 +1,7 @@
+import random
 from engine import GutenbergEngine
 import streamlit as st
-
-st.set_page_config(
-    page_title="Pro Library - CSV Catalog",
-    page_icon="📚",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+import streamlit.components.v1 as components
 
 
 @st.cache_resource
@@ -16,6 +11,13 @@ def get_engine():
 
 engine = get_engine()
 
+st.set_page_config(
+    page_title="Pro Digital Library",
+    page_icon="📚",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
 # State Management
 if "selected_book_id" not in st.session_state:
     st.session_state.selected_book_id = None
@@ -23,6 +25,8 @@ if "selected_book_title" not in st.session_state:
     st.session_state.selected_book_title = ""
 if "selected_book_author" not in st.session_state:
     st.session_state.selected_book_author = ""
+if "search_input" not in st.session_state:
+    st.session_state.search_input = ""
 
 # CSS UI Light Theme Modern
 st.markdown(
@@ -58,14 +62,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-
-@st.cache_data(ttl=3600, show_spinner=False)
-def fetch_text_stream(book_id):
-    return engine.get_quick_text(book_id)
-
-
 # ==========================================
-# 1. MODE BACA FULL SCREEN
+# 1. MODE BACA LAYAR PENUH (EMBED READER)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
@@ -79,79 +77,97 @@ if st.session_state.selected_book_id is not None:
             st.rerun()
 
     st.markdown("---")
-
-    c1, c2 = st.columns([2, 3])
-    with c1:
-        font_size = st.slider("🔍 Ukuran Teks (px):", 14, 30, 18)
-    with c2:
-        theme = st.radio(
-            "🎨 Mode Tampilan:",
-            ["Light Mode ☀️", "Sepia 📜", "Dark Mode 🌙"],
-            horizontal=True,
-        )
-
-    if theme == "Dark Mode 🌙":
-        bg, text, border = "#1e293b", "#f8fafc", "#334155"
-    elif theme == "Sepia 📜":
-        bg, text, border = "#fef3c7", "#78350f", "#fde68a"
-    else:
-        bg, text, border = "#ffffff", "#0f172a", "#cbd5e1"
-
-    st.markdown(
-        f"""
-        <style>
-        .stTextArea textarea {{
-            background-color: {bg} !important;
-            color: {text} !important;
-            font-size: {font_size}px !important;
-            line-height: 1.8 !important;
-            border: 1px solid {border} !important;
-            border-radius: 12px !important;
-            font-family: 'Georgia', serif !important;
-        }}
-        </style>
-    """,
-        unsafe_allow_html=True,
-    )
-
     st.title(f"📖 {b_title}")
     st.caption(f"Penulis: {b_author} | ID Buku: #{b_id}")
 
-    with st.spinner("⚡ Mengunduh naskah cerita dari Gutenberg..."):
-        text_content = fetch_text_stream(b_id)
-
-    st.text_area("Isi Naskah Buku:", value=text_content, height=600)
-
-# ==========================================
-# 2. KATALOG UTAMA
-# ==========================================
-else:
-    st.title("📚 Pro Digital Library")
-    st.caption("Katalog CSV Engine - Memuat 5.000+ Buku Instan")
-
-    with st.sidebar:
-        st.header("⚙️ Kontrol Katalog")
-        target_count = st.select_slider(
-            "Tampilkan Jumlah Buku:",
-            options=[1000, 2000, 3000, 5000],
-            value=3000,
-        )
-
-    search_query = st.text_input(
-        "🔎 Cari Judul / Penulis / Kata Kunci:",
-        placeholder="Ketik misalnya: Declaration, Lincoln, Bible, Alice...",
+    read_tab1, read_tab2 = st.tabs(
+        ["📖 E-Reader Layar Penuh", "📄 Teks Polos (Plain Text)"]
     )
 
+    with read_tab1:
+        st.info("💡 Memuat e-reader resmi langsung di dalam aplikasi...")
+        reader_url = (
+            f"https://www.gutenberg.org/files/{b_id}/{b_id}-h/{b_id}-h.htm"
+        )
+        fallback_url = f"https://www.gutenberg.org/ebooks/{b_id}.html.images"
+
+        components.iframe(reader_url, height=700, scrolling=True)
+        st.caption(
+            f"Jika tampilan tidak muncul, [buka buku di tab baru]({fallback_url})"
+        )
+
+    with read_tab2:
+        txt_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-0.txt"
+        st.markdown(
+            f"Buka langsung naskah teks polos: [Unduh/Baca Teks Raw]({txt_url})"
+        )
+
+# ==========================================
+# 2. KATALOG UTAMA & REKOMENDASI HARI INI
+# ==========================================
+else:
+    # --- SIDEBAR: REKOMENDASI HARI INI ---
+    with st.sidebar:
+        st.header("✨ Rekomendasi Hari Ini")
+        st.caption("Pilih topik menarik untuk eksplorasi kilat:")
+
+        # Daftar topik rekomendasi
+        topics = [
+            {"label": "🔍 Petualangan & Detektif", "query": "Holmes"},
+            {"label": "🚀 Sains & Fiksi Ilmiah", "query": "Science"},
+            {"label": "📜 Sejarah & Deklarasi", "query": "History"},
+            {"label": "🏰 Fantasi & Dongeng", "query": "Wonderland"},
+            {"label": "🎭 Novel Klasik Dunia", "query": "Love"},
+        ]
+
+        for t in topics:
+            if st.button(t["label"], use_container_width=True):
+                st.session_state.search_input = t["query"]
+                st.rerun()
+
+        st.divider()
+
+        # Fitur Acak Buku (Random Pick)
+        if st.button("🎲 Kejutan! Pilihkan Buku Acak", use_container_width=True):
+            random_queries = [
+                "Secret",
+                "King",
+                "World",
+                "Art",
+                "Mystery",
+                "Island",
+            ]
+            st.session_state.search_input = random.choice(random_queries)
+            st.rerun()
+
+    # --- TAMPILAN UTAMA ---
+    st.title("📚 Pro Digital Library")
+    st.caption("Akses Puluhan Ribu Buku Klasik Dunia Secara Instan")
+
+    # Kolom Search Utama
+    search_query = st.text_input(
+        "🔎 Cari Judul, Penulis, atau Topik Buku:",
+        value=st.session_state.search_input,
+        placeholder="Ketik misalnya: Sherlock, Austen, Time Machine, War...",
+    )
+
+    # Ambil hasil pencarian dari CSV Engine
+    query_clean = search_query.strip()
     raw_books = engine.search_books(
-        query=search_query.strip(), limit=target_count
+        query=query_clean, limit=100 if query_clean else 24
     )
 
     if raw_books:
-        st.success(
-            f"🎯 Berhasil Memuat **{len(raw_books):,} Buku** dari File CSV!"
-        )
+        if query_clean:
+            st.success(
+                f"🎯 Menampilkan **{len(raw_books)} Hasil** untuk pencarian: *\"{query_clean}\"*"
+            )
+        else:
+            st.subheader("🔥 Koleksi Populer Hari Ini")
+
         st.divider()
 
+        # Grid Tampilan Buku (4 Kolom)
         cols_per_row = 4
         for i in range(0, len(raw_books), cols_per_row):
             cols = st.columns(cols_per_row)
@@ -191,5 +207,5 @@ else:
                         st.write("")
     else:
         st.warning(
-            "Tidak ada buku yang cocok atau file 'pg_catalog.csv' belum dibaca dengan benar."
+            f"Buku dengan kata kunci '{query_clean}' tidak ditemukan. Coba gunakan kata kunci lain!"
         )
