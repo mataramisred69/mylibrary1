@@ -1,6 +1,6 @@
+import math
 import random
 from engine import GutenbergEngine
-import math
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -30,65 +30,80 @@ if "search_input" not in st.session_state:
     st.session_state.search_input = ""
 if "current_page" not in st.session_state:
     st.session_state.current_page = 1
+if "theme_mode" not in st.session_state:
+    st.session_state.theme_mode = "Dark"  # Default theme
 
-# CSS CUSTOM: F15 LIBRARY DARK MODE + RESPONSIVE MOBILE GRID (2 KOLOM)
+# --- STYLING DINAMIS (DARK & LIGHT MODE) ---
+is_dark = st.session_state.theme_mode == "Dark"
+
+bg_color = "#0d0e12" if is_dark else "#f8fafc"
+card_bg = "#16181e" if is_dark else "#ffffff"
+card_border = "#262932" if is_dark else "#e2e8f0"
+text_color = "#ffffff" if is_dark else "#0f172a"
+sub_color = "#94a3b8" if is_dark else "#64748b"
+cover_bg = "#111216" if is_dark else "#f1f5f9"
+tag_bg = "#222530" if is_dark else "#e2e8f0"
+tag_color = "#cbd5e1" if is_dark else "#334155"
+btn_bg = "#1f232d" if is_dark else "#ffffff"
+btn_border = "#333846" if is_dark else "#cbd5e1"
+
 st.markdown(
-    """
+    f"""
     <style>
-    /* Dark Theme F15 Library Background */
-    .stApp {
-        background-color: #0d0e12 !important;
-        color: #f1f5f9 !important;
-    }
+    /* Dynamic Theme Background */
+    .stApp {{
+        background-color: {bg_color} !important;
+        color: {text_color} !important;
+    }}
     
     /* Header Styling */
-    .f15-header {
+    .f15-header {{
         font-family: 'serif', 'Georgia', 'Times New Roman';
         font-size: 26px;
         font-weight: 700;
-        color: #ffffff;
+        color: {text_color};
         margin-bottom: 2px;
-    }
-    .f15-sub {
+    }}
+    .f15-sub {{
         font-size: 13px;
-        color: #94a3b8;
+        color: {sub_color};
         margin-bottom: 16px;
-    }
+    }}
 
     /* Card Buku ala F15 Library */
-    .book-card-f15 {
-        background-color: #16181e;
-        border: 1px solid #262932;
+    .book-card-f15 {{
+        background-color: {card_bg};
+        border: 1px solid {card_border};
         border-radius: 12px;
         padding: 10px;
         margin-bottom: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         display: flex;
         flex-direction: column;
         justify-content: space-between;
         height: 100%;
-    }
-    .cover-box-f15 {
+    }}
+    .cover-box-f15 {{
         width: 100%;
         height: 160px;
         border-radius: 8px;
         overflow: hidden;
-        background-color: #111216;
+        background-color: {cover_bg};
         display: flex;
         align-items: center;
         justify-content: center;
         margin-bottom: 8px;
-    }
-    .cover-img-f15 {
+    }}
+    .cover-img-f15 {{
         max-height: 100%;
         max-width: 100%;
         object-fit: contain;
-    }
-    .title-f15 {
+    }}
+    .title-f15 {{
         font-family: 'serif', 'Georgia', 'Times New Roman';
         font-size: 13px;
         font-weight: 600;
-        color: #ffffff;
+        color: {text_color};
         height: 36px;
         line-height: 1.3;
         overflow: hidden;
@@ -96,55 +111,50 @@ st.markdown(
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         margin-bottom: 4px;
-    }
-    .author-f15 {
+    }}
+    .author-f15 {{
         font-size: 11px;
-        color: #94a3b8;
+        color: {sub_color};
         margin-bottom: 6px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-    }
-    .tag-f15 {
+    }}
+    .tag-f15 {{
         display: inline-block;
-        background-color: #222530;
-        color: #cbd5e1;
+        background-color: {tag_bg};
+        color: {tag_color};
         font-size: 10px;
         padding: 2px 8px;
         border-radius: 12px;
         margin-bottom: 8px;
-    }
+    }}
 
     /* Target Grid Streamlit agar di HP tampil 2 Kolom Sejajar */
-    @media (max-width: 640px) {
-        [data-testid="column"] {
+    @media (max-width: 640px) {{
+        [data-testid="column"] {{
             width: 50% !important;
             flex: 1 1 50% !important;
             min-width: 45% !important;
             padding: 0 4px !important;
-        }
-        [data-testid="stHorizontalBlock"] {
+        }}
+        [data-testid="stHorizontalBlock"] {{
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: wrap !important;
-        }
-        .cover-box-f15 { height: 130px !important; }
-        .title-f15 { font-size: 12px !important; height: 32px !important; }
-    }
+        }}
+        .cover-box-f15 {{ height: 130px !important; }}
+        .title-f15 {{ font-size: 12px !important; height: 32px !important; }}
+    }}
     
-    /* Tombol Style Dark Custom */
-    .stButton>button {
-        background-color: #1f232d !important;
-        color: #f1f5f9 !important;
-        border: 1px solid #333846 !important;
+    /* Tombol Style Custom */
+    .stButton>button {{
+        background-color: {btn_bg} !important;
+        color: {text_color} !important;
+        border: 1px solid {btn_border} !important;
         border-radius: 8px !important;
         font-weight: 500 !important;
-    }
-    .stButton>button:hover {
-        background-color: #2a2f3d !important;
-        border-color: #6366f1 !important;
-        color: #ffffff !important;
-    }
+    }}
     </style>
 """,
     unsafe_allow_html=True,
@@ -165,7 +175,9 @@ if st.session_state.selected_book_id is not None:
             st.rerun()
 
     st.markdown("---")
-    st.markdown(f"<div class='f15-header'>{b_title}</div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='f15-header'>{b_title}</div>", unsafe_allow_html=True
+    )
     st.caption(f"Penulis: {b_author} | ID Buku: #{b_id}")
 
     read_tab1, read_tab2 = st.tabs(
@@ -235,15 +247,23 @@ else:
                 st.session_state.current_page = 1
                 st.rerun()
 
-    # --- HEADER F15 STYLE ---
-    st.markdown(
-        "<div class='f15-header'>F15 Digital Library</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        "<div class='f15-sub'>Eksplorasi Ribuan Koleksi Buku Klasik Dunia</div>",
-        unsafe_allow_html=True,
-    )
+    # --- HEADER & TOGGLE DARK/LIGHT MODE ---
+    col_head, col_theme = st.columns([4, 1])
+    with col_head:
+        st.markdown(
+            "<div class='f15-header'>F15 Digital Library</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<div class='f15-sub'>Eksplorasi Ribuan Koleksi Buku Klasik Dunia</div>",
+            unsafe_allow_html=True,
+        )
+
+    with col_theme:
+        theme_btn_label = "☀️ Light" if is_dark else "🌙 Dark"
+        if st.button(theme_btn_label, use_container_width=True):
+            st.session_state.theme_mode = "Light" if is_dark else "Dark"
+            st.rerun()
 
     # Kolom Pencarian Utama
     search_query = st.text_input(
@@ -374,7 +394,7 @@ else:
                 st.rerun()
 
         st.markdown(
-            f"<div style='text-align: center; font-size: 11px; color: #64748b; margin-top: 4px;'>Halaman {st.session_state.current_page} dari {total_pages:,}</div>",
+            f"<div style='text-align: center; font-size: 11px; color: {sub_color}; margin-top: 4px;'>Halaman {st.session_state.current_page} dari {total_pages:,}</div>",
             unsafe_allow_html=True,
         )
 
