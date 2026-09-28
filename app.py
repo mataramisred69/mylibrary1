@@ -2,6 +2,7 @@ import base64
 import math
 import os
 import random
+import time
 import requests
 import streamlit as st
 from engine import GutenbergEngine
@@ -30,7 +31,7 @@ st.set_page_config(
 )
 
 # --- KONFIGURASI PEMILIK & GITHUB ---
-MY_EMAIL = "sahjihan@gmail.com"
+MY_EMAIL = "sahjihanfarabi@gmail.com"
 OWNER_PASSWORD = "f15rahasia"
 
 # Konfigurasi Repositori GitHub Anda
@@ -38,7 +39,7 @@ GITHUB_REPO = "mylibrary1"
 GITHUB_USER = "mataramisred69"
 
 
-# --- FUNGSI SAVE / EDIT FILE LANGSUNG KE GITHUB VIA API ---
+# --- FUNGSI SAVE / EDIT FILE LANGSUNG KE GITHUB VIA API (ANTI-CONFLICT) ---
 def push_file_to_github(file_path_in_repo, content_bytes, commit_message):
     token = st.secrets.get("GITHUB_TOKEN", None)
     if not token:
@@ -48,25 +49,41 @@ def push_file_to_github(file_path_in_repo, content_bytes, commit_message):
     headers = {
         "Authorization": f"token {token}",
         "Accept": "application/vnd.github.v3+json",
+        "Cache-Control": "no-cache",  # Mencegah caching SHA usang
     }
 
-    # Cek apakah file sudah ada untuk mendapatkan sha (jika overwrite / edit)
-    res_get = requests.get(url, headers=headers)
-    sha = None
-    if res_get.status_code == 200:
-        sha = res_get.json().get("sha")
+    # Lakukan percobaan hingga 3 kali jika terjadi bentrokan SHA (409)
+    for attempt in range(3):
+        # 1. Ambil SHA paling segar dari GitHub
+        res_get = requests.get(url, headers=headers)
+        sha = None
+        if res_get.status_code == 200:
+            sha = res_get.json().get("sha")
 
-    b64_content = base64.b64encode(content_bytes).decode("utf-8")
+        b64_content = base64.b64encode(content_bytes).decode("utf-8")
+        payload = {"message": commit_message, "content": b64_content}
+        if sha:
+            payload["sha"] = sha
 
-    payload = {"message": commit_message, "content": b64_content}
-    if sha:
-        payload["sha"] = sha
+        # 2. Kirim update/file baru
+        res_put = requests.put(url, json=payload, headers=headers)
 
-    res_put = requests.put(url, json=payload, headers=headers)
-    if res_put.status_code in [200, 201]:
-        return True, "Berhasil tersimpan ke GitHub!"
-    else:
-        return False, f"Gagal API: {res_put.status_code} - {res_put.text}"
+        if res_put.status_code in [200, 201]:
+            return True, "Berhasil tersimpan ke GitHub!"
+        elif res_put.status_code == 409:
+            # Jika conflict, beri jeda 1 detik lalu ambil SHA baru
+            time.sleep(1)
+            continue
+        else:
+            return (
+                False,
+                f"Gagal API: {res_put.status_code} - {res_put.text}",
+            )
+
+    return (
+        False,
+        "Gagal menyimpan karena bentrokan respon GitHub (409). Coba lagi dalam beberapa detik.",
+    )
 
 
 # --- FUNGSI VERIFIKASI PEMILIK ---
@@ -561,6 +578,9 @@ elif st.session_state.active_view == "private_vault":
                     txt_bytes,
                     f"Update/Edit private book text: {new_title}",
                 )
+
+                # Jeda sebentar agar GitHub API memproses commit pertama
+                time.sleep(1)
 
                 # 2. Simpan/Overwrite Sampul jika ada
                 if cover_file is not None and success_txt:
