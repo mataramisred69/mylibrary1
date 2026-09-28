@@ -19,33 +19,37 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# --- KONFIGURASI EMAIL PEMILIK (AKSES OTOMATIS) ---
-# Masukkan email Google/GitHub yang Anda gunakan di Streamlit Cloud
-MY_EMAIL = "farabitharkan@gmail.com"
+# --- KONFIGURASI EMAIL PEMILIK (AKSES TUNGGAL) ---
+# Masukkan email akun GitHub / Streamlit Cloud Anda
+MY_EMAIL = "sahjihanfarabi@gmail.com"
 
-# --- DATABASE BUKU PRIBADI (KHUSUS PEMILIK EMAIL) ---
-PRIVATE_BOOKS = {
-    "priv_1": {
-        "title": "Buku Catatan Rahasia Saya",
-        "author": "Penulis Pribadi",
-        "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya email Anda yang terverifikasi yang bisa mengakses naskah ini secara otomatis.",
-    },
-}
+# --- DATABASE BUKU PRIBADI ---
+if "private_books_db" not in st.session_state:
+    st.session_state.private_books_db = {
+        "priv_1": {
+            "title": "Buku Catatan Rahasia Saya",
+            "author": "Penulis Pribadi",
+            "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya Anda yang bisa melihat halaman ini.",
+        }
+    }
 
 
-# --- FUNGSI DETEKSI EMAIL USER ---
-def get_current_user_email():
-    # Mengambil email dari sesi login Streamlit Cloud
+# --- FUNGSI DETEKSI EMAIL USER DENGAN VERIFIKASI KETAT ---
+def is_owner():
     try:
+        user_email = None
         if hasattr(st, "experimental_user") and hasattr(
             st.experimental_user, "email"
         ):
-            return st.experimental_user.email
+            user_email = st.experimental_user.email
         elif hasattr(st, "user") and hasattr(st.user, "email"):
-            return st.user.email
+            user_email = st.user.email
+
+        if user_email and user_email.lower().strip() == MY_EMAIL.lower().strip():
+            return True
     except Exception:
         pass
-    return None
+    return False
 
 
 # --- FUNGSI AMBIL TEKS OTOMATIS (ANTI 404) ---
@@ -224,7 +228,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-current_user_email = get_current_user_email()
+user_is_owner = is_owner()
 
 # ==========================================
 # SIDEBAR: NAVIGASI & KATEGORI LENGKAP
@@ -243,11 +247,8 @@ with st.sidebar:
             st.session_state.active_view = "my_library"
             st.rerun()
 
-    # Tampilkan tombol hanya jika email terdeteksi / terverifikasi
-    if (
-        current_user_email is None
-        or current_user_email.lower() == MY_EMAIL.lower()
-    ):
+    # Tombol hanya dirender jika terverifikasi sebagai pemilik (email cocok)
+    if user_is_owner:
         if st.button("🔒 Panel Buku Pribadi", use_container_width=True):
             st.session_state.active_view = "private_vault"
             st.rerun()
@@ -355,28 +356,21 @@ if st.session_state.selected_book_id is not None:
         st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. PANEL BUKU PRIBADI (OTOMATIS BEBAS PASSWORD UNTUK EMAIL ANDA)
+# 2. PANEL BUKU PRIBADI (AKSES TERKUNCI RAPAT)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
-    st.markdown(
-        "<div class='f15-header'>🔒 Panel Buku Pribadi</div>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        "<div class='f15-sub'>Khusus Pengelola & Pemilik Aplikasi</div>",
-        unsafe_allow_html=True,
-    )
-
-    # Verifikasi Akses Email
-    if (
-        current_user_email is not None
-        and current_user_email.lower() != MY_EMAIL.lower()
-    ):
-        st.error("Akses Ditolak. Panel ini hanya dapat diakses oleh pemilik.")
+    if not user_is_owner:
+        st.error("🔒 Akses Ditolak. Halaman ini hanya untuk pemilik aplikasi.")
     else:
-        st.success("✅ Akses Terverifikasi Otomatis via Email")
+        st.markdown(
+            "<div class='f15-header'>🔒 Panel Buku Pribadi</div>",
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<div class='f15-sub'>Khusus Pemilik Aplikasi (Terverifikasi)</div>",
+            unsafe_allow_html=True,
+        )
 
-        st.divider()
         st.subheader("➕ Tambah Buku Pribadi Baru")
         new_title = st.text_input(
             "Judul Buku:", placeholder="Masukkan judul..."
@@ -392,8 +386,8 @@ elif st.session_state.active_view == "private_vault":
 
         if st.button("💾 Simpan Buku Pribadi"):
             if new_title and new_content:
-                p_key = f"priv_{len(PRIVATE_BOOKS) + 1}"
-                PRIVATE_BOOKS[p_key] = {
+                p_key = f"priv_{len(st.session_state.private_books_db) + 1}"
+                st.session_state.private_books_db[p_key] = {
                     "title": new_title,
                     "author": new_author if new_author else "Pribadi",
                     "content": new_content,
@@ -408,7 +402,7 @@ elif st.session_state.active_view == "private_vault":
         st.divider()
         st.subheader("📚 Koleksi Buku Pribadi Anda")
 
-        for p_id, p_info in PRIVATE_BOOKS.items():
+        for p_id, p_info in st.session_state.private_books_db.items():
             st.write(f"**{p_info['title']}**")
             st.caption(f"Penulis: {p_info['author']}")
             if st.button("📖 Baca Buku Ini", key=f"read_priv_{p_id}"):
