@@ -21,7 +21,7 @@ st.set_page_config(
 
 # --- KONFIGURASI EMAIL PEMILIK (AKSES TUNGGAL) ---
 # Masukkan email akun GitHub / Streamlit Cloud Anda
-MY_EMAIL = "sahjihanfarabi@gmail.com"
+MY_EMAIL = "mataramisred69@gmail.com"
 
 # --- DATABASE BUKU PRIBADI ---
 if "private_books_db" not in st.session_state:
