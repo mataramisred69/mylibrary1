@@ -22,7 +22,7 @@ def get_engine():
 engine = get_engine()
 
 st.set_page_config(
-    page_title="Pro Digital Library",
+    page_title=" MyLibrary",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -36,9 +36,9 @@ OWNER_PASSWORD = "farabi12"
 if "private_books_db" not in st.session_state:
     st.session_state.private_books_db = {
         "priv_1": {
-            "title": "Buku Catatan Rahasia Saya",
+            "title": "Buku Saya",
             "author": "Penulis Pribadi",
-            "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya Anda yang bisa melihat halaman ini.",
+            "content": " contoh .",
             "cover": "https://via.placeholder.com/150x200?text=Buku+Pribadi",
         }
     }
