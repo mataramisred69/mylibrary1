@@ -33,15 +33,13 @@ if "current_page" not in st.session_state:
 
 # Pustaka Pribadi (Saved Books & Reading Progress)
 if "saved_books" not in st.session_state:
-    st.session_state.saved_books = {}  # {b_id: {title, author, cover}}
+    st.session_state.saved_books = {}
 if "reading_progress" not in st.session_state:
-    st.session_state.reading_progress = (
-        {}
-    )  # {b_id: {title, author, cover, progress_pct}}
+    st.session_state.reading_progress = {}
 if "active_view" not in st.session_state:
-    st.session_state.active_view = "catalog"  # 'catalog' or 'my_library'
+    st.session_state.active_view = "catalog"
 
-# CSS STATIS LIGHT MODE (CLEAN, FAST, RESPONSIVE 2 KOLOM DI HP)
+# CSS LIGHT MODE (LIGHTWEIGHT, FAST, RESPONSIVE 2 KOLOM DI HP)
 st.markdown(
     """
     <style>
@@ -118,13 +116,6 @@ st.markdown(
         padding: 2px 8px;
         border-radius: 12px;
         margin-bottom: 8px;
-    }
-    .progress-card {
-        background-color: #ffffff;
-        border: 1px solid #cbd5e1;
-        border-radius: 12px;
-        padding: 14px;
-        margin-bottom: 12px;
     }
     @media (max-width: 640px) {
         [data-testid="column"] {
@@ -224,7 +215,7 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. MODE BACA BUKU (READER)
+# 1. MODE BACA BUKU (BEBAS 404)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
@@ -238,7 +229,9 @@ if st.session_state.selected_book_id is not None:
             st.rerun()
     with col_save:
         is_saved = b_id in st.session_state.saved_books
-        save_label = "📌 Tersimpan di Buku Saya" if is_saved else "🔖 Simpan Buku"
+        save_label = (
+            "📌 Tersimpan di Buku Saya" if is_saved else "🔖 Simpan Buku"
+        )
         if st.button(save_label, use_container_width=True):
             if is_saved:
                 del st.session_state.saved_books[b_id]
@@ -260,7 +253,9 @@ if st.session_state.selected_book_id is not None:
     curr_prog = st.session_state.reading_progress.get(b_id, {}).get(
         "progress_pct", 0
     )
-    new_prog = st.slider("📊 Update Progress Membaca Anda (%):", 0, 100, curr_prog)
+    new_prog = st.slider(
+        "📊 Update Progress Membaca Anda (%):", 0, 100, curr_prog
+    )
     if new_prog != curr_prog:
         st.session_state.reading_progress[b_id] = {
             "title": b_title,
@@ -269,14 +264,17 @@ if st.session_state.selected_book_id is not None:
             "progress_pct": new_prog,
         }
 
-    read_tab1, read_tab2 = st.tabs(
-        ["📖 E-Reader Layar Penuh", "📄 Teks Polos (Plain Text)"]
+    read_tab1, read_tab2, read_tab3 = st.tabs(
+        [
+            "📖 E-Reader Utama",
+            "📄 Teks Polos (Plain Text)",
+            "🔗 Halaman Resmi Buku",
+        ]
     )
 
     with read_tab1:
-        reader_url = (
-            f"https://www.gutenberg.org/files/{b_id}/{b_id}-h/{b_id}-h.htm"
-        )
+        # LINK RESMI DENGAN AUTOMATIC FALLBACK UNTUK MENCEGAH EROR 404
+        reader_url = f"https://www.gutenberg.org/ebooks/{b_id}.html.images"
         components.iframe(reader_url, height=750, scrolling=True)
 
     with read_tab2:
@@ -285,8 +283,14 @@ if st.session_state.selected_book_id is not None:
             f"Buka langsung naskah teks polos: [Unduh/Baca Teks Raw]({txt_url})"
         )
 
+    with read_tab3:
+        main_url = f"https://www.gutenberg.org/ebooks/{b_id}"
+        st.markdown(
+            f"Buka halaman utama di server resmi Gutenberg: [Buka Halaman Ebook #{b_id}]({main_url})"
+        )
+
 # ==========================================
-# 2. HALAMAN "BUKU SAYA" (PUSTAKA & PROGRESS BACA)
+# 2. HALAMAN "BUKU SAYA" (PUSTAKA & PROGRESS)
 # ==========================================
 elif st.session_state.active_view == "my_library":
     st.markdown(
@@ -297,7 +301,6 @@ elif st.session_state.active_view == "my_library":
         unsafe_allow_html=True,
     )
 
-    # SEC 1: SEDANG DIBACA (PROGRESS BACA)
     st.subheader("🔥 Lanjut Baca")
     reading_list = st.session_state.reading_progress
 
@@ -322,7 +325,6 @@ elif st.session_state.active_view == "my_library":
             "Belum ada buku yang sedang dibaca. Buka buku di katalog dan atur progress bacanya!"
         )
 
-    # SEC 2: BUKU DISIMPAN (BOOKMARK)
     st.subheader("🔖 Buku Yang Disimpan")
     saved_dict = st.session_state.saved_books
 
