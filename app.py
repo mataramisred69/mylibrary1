@@ -167,7 +167,7 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    st.header("✨ Kategori Lengkap")
+    st.header(" Kategori Lengkap")
 
     categories = [
         {"label": "🩺 Ilmu Medis & Kesehatan", "query": "Medicine"},
@@ -349,7 +349,7 @@ elif st.session_state.active_view == "my_library":
 # ==========================================
 else:
     st.markdown(
-        "<div class='f15-header'>Pro Digital Library</div>",
+        "<div class='f15-header'> MyLibrary</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -360,7 +360,7 @@ else:
     search_query = st.text_input(
         "",
         value=st.session_state.search_input,
-        placeholder="🔍 Cari Judul, Penulis, Topik, Medis, Pengembangan Diri...",
+        placeholder=" Cari Judul ",
         label_visibility="collapsed",
     )
 
