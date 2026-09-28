@@ -2,6 +2,7 @@ import math
 import random
 from engine import GutenbergEngine
 import streamlit as st
+import streamlit.components.v1 as components
 
 @st.cache_resource
 def get_engine():
@@ -36,7 +37,7 @@ if "reading_progress" not in st.session_state:
 if "active_view" not in st.session_state:
     st.session_state.active_view = "catalog"
 
-# CSS LIGHT MODE (CLEAN, ULTRA FAST, RESPONSIVE 2 KOLOM DI HP)
+# CSS LIGHT MODE (CLEAN, FAST, RESPONSIVE 2 KOLOM DI HP)
 st.markdown("""
     <style>
     .stApp {
@@ -199,7 +200,7 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. MODE DETAIL BUKU & AKSES BACA (Bebas Lag & Anti Blank)
+# 1. BACA LANGSUNG DI LAMAN WEB (E-READER INTEGRATED)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
@@ -227,36 +228,37 @@ if st.session_state.selected_book_id is not None:
             st.rerun()
 
     st.markdown("---")
-    
-    col_c1, col_c2 = st.columns([1, 2])
-    with col_c1:
-        st.image(cover_url, use_container_width=True)
-    with col_c2:
-        st.markdown(f"<div class='f15-header'>{b_title}</div>", unsafe_allow_html=True)
-        st.markdown(f"**Penulis:** {b_author}")
-        st.caption(f"ID Buku: #{b_id} | Lisensi: Public Domain (Bebas / Gratis)")
-        
-        st.write("")
-        # Pengatur Progress Baca
-        curr_prog = st.session_state.reading_progress.get(b_id, {}).get("progress_pct", 0)
-        new_prog = st.slider("📊 Update Progress Membaca Anda (%):", 0, 100, curr_prog)
-        if new_prog != curr_prog:
-            st.session_state.reading_progress[b_id] = {
-                "title": b_title,
-                "author": b_author,
-                "cover": cover_url,
-                "progress_pct": new_prog
-            }
+    st.markdown(f"<div class='f15-header'>{b_title}</div>", unsafe_allow_html=True)
+    st.caption(f"Penulis: {b_author} | ID Buku: #{b_id}")
 
-        st.markdown("---")
-        st.subheader("🚀 Pilihan Mode Baca:")
+    # Pengatur Progress Baca
+    curr_prog = st.session_state.reading_progress.get(b_id, {}).get("progress_pct", 0)
+    new_prog = st.slider("📊 Update Progress Membaca Anda (%):", 0, 100, curr_prog)
+    if new_prog != curr_prog:
+        st.session_state.reading_progress[b_id] = {
+            "title": b_title,
+            "author": b_author,
+            "cover": cover_url,
+            "progress_pct": new_prog
+        }
+
+    # TAB BACA LANGSUNG DI WEB
+    tab_embed, tab_raw = st.tabs(["📖 Baca Langsung di Web", "📄 Teks Polos (Raw Text)"])
+
+    with tab_embed:
+        # Gunakan URL file HTML resmi Gutenberg yang paling stabil untuk iframe
+        reader_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-h/{b_id}-h.htm"
+        fallback_url = f"https://www.gutenberg.org/ebooks/{b_id}.html.images"
         
-        # Link Langsung Resmi Gutenberg (100% Bebas Blank & Cepat)
-        html_reader_url = f"https://www.gutenberg.org/ebooks/{b_id}.html.images"
-        txt_reader_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-0.txt"
+        # Layar pembaca langsung
+        components.iframe(reader_url, height=750, scrolling=True)
         
-        st.link_button("📖 Buka E-Reader Resmi (HTML)", html_reader_url, use_container_width=True)
-        st.link_button("📄 Buka Naskah Teks Polos (Raw)", txt_reader_url, use_container_width=True)
+        # Opsi cadangan jika browser membocorkan blank pada file HTML tertentu
+        st.markdown(f"<div style='text-align: right; font-size: 12px; color: #64748b; margin-top: 5px;'>Jika tampilan di atas kosong/blank: <a href='{fallback_url}' target='_blank'>Buka versi alternatif di tab baru</a></div>", unsafe_allow_html=True)
+
+    with tab_raw:
+        txt_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-0.txt"
+        components.iframe(txt_url, height=750, scrolling=True)
 
 # ==========================================
 # 2. HALAMAN "BUKU SAYA" (PUSTAKA & PROGRESS)
@@ -278,7 +280,7 @@ elif st.session_state.active_view == "my_library":
                 st.caption(f"oleh {r_info['author']}")
                 st.progress(r_info["progress_pct"] / 100)
                 st.write(f"**{r_info['progress_pct']}% selesai**")
-                if st.button("📖 Detail & Buka Buku", key=f"cont_{r_id}"):
+                if st.button("📖 Lanjutkan Membaca", key=f"cont_{r_id}"):
                     st.session_state.selected_book_id = r_id
                     st.session_state.selected_book_title = r_info["title"]
                     st.session_state.selected_book_author = r_info["author"]
@@ -308,7 +310,7 @@ elif st.session_state.active_view == "my_library":
                                 <div class="author-f15">oleh {s_info['author']}</div>
                             </div>
                         """, unsafe_allow_html=True)
-                        if st.button("📖 Buka Detail", key=f"read_saved_{s_id}"):
+                        if st.button("📖 Baca", key=f"read_saved_{s_id}"):
                             st.session_state.selected_book_id = s_id
                             st.session_state.selected_book_title = s_info["title"]
                             st.session_state.selected_book_author = s_info["author"]
