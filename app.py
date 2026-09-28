@@ -19,9 +19,9 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# --- KONFIGURASI EMAIL PEMILIK (AKSES TUNGGAL) ---
-# Masukkan email akun GitHub / Streamlit Cloud Anda
+# --- KONFIGURASI PEMILIK ---
 MY_EMAIL = "mataramisred69@gmail.com"
+OWNER_PASSWORD = "farabi12"  # Silakan ganti password ini jika ingin diganti
 
 # --- DATABASE BUKU PRIBADI ---
 if "private_books_db" not in st.session_state:
@@ -34,8 +34,13 @@ if "private_books_db" not in st.session_state:
     }
 
 
-# --- FUNGSI DETEKSI EMAIL USER DENGAN VERIFIKASI KETAT ---
-def is_owner():
+# --- FUNGSI VERIFIKASI PEMILIK ---
+def is_owner_verified():
+    # 1. Cek sesi login manual via password
+    if st.session_state.get("owner_authenticated", False):
+        return True
+
+    # 2. Cek email otomatis jika didukung oleh Streamlit Cloud
     try:
         user_email = None
         if hasattr(st, "experimental_user") and hasattr(
@@ -49,6 +54,7 @@ def is_owner():
             return True
     except Exception:
         pass
+
     return False
 
 
@@ -94,6 +100,8 @@ if "saved_books" not in st.session_state:
     st.session_state.saved_books = {}
 if "active_view" not in st.session_state:
     st.session_state.active_view = "catalog"
+if "owner_authenticated" not in st.session_state:
+    st.session_state.owner_authenticated = False
 
 # CSS LIGHT MODE + PAPER-WHITE READER
 st.markdown(
@@ -228,7 +236,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-user_is_owner = is_owner()
+user_is_owner = is_owner_verified()
 
 # ==========================================
 # SIDEBAR: NAVIGASI & KATEGORI LENGKAP
@@ -247,11 +255,10 @@ with st.sidebar:
             st.session_state.active_view = "my_library"
             st.rerun()
 
-    # Tombol hanya dirender jika terverifikasi sebagai pemilik (email cocok)
-    if user_is_owner:
-        if st.button("🔒 Panel Buku Pribadi", use_container_width=True):
-            st.session_state.active_view = "private_vault"
-            st.rerun()
+    # Tombol selalu dapat diklik oleh pemilik
+    if st.button("🔒 Panel Buku Pribadi", use_container_width=True):
+        st.session_state.active_view = "private_vault"
+        st.rerun()
 
     st.divider()
     st.header("✨ Kategori Lengkap")
@@ -356,21 +363,39 @@ if st.session_state.selected_book_id is not None:
         st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. PANEL BUKU PRIBADI (AKSES TERKUNCI RAPAT)
+# 2. PANEL BUKU PRIBADI (PASSWORD FALLBACK & HYBRID AUTH)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
-    if not user_is_owner:
-        st.error("🔒 Akses Ditolak. Halaman ini hanya untuk pemilik aplikasi.")
-    else:
-        st.markdown(
-            "<div class='f15-header'>🔒 Panel Buku Pribadi</div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            "<div class='f15-sub'>Khusus Pemilik Aplikasi (Terverifikasi)</div>",
-            unsafe_allow_html=True,
-        )
+    st.markdown(
+        "<div class='f15-header'>🔒 Panel Buku Pribadi</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<div class='f15-sub'>Khusus Pemilik Aplikasi</div>",
+        unsafe_allow_html=True,
+    )
 
+    if not user_is_owner:
+        st.info("🔒 Konfirmasi identitas Anda sebagai pemilik untuk masuk.")
+        input_pass = st.text_input(
+            "Masukkan Password Pemilik:",
+            type="password",
+            placeholder="Ketik password...",
+        )
+        if st.button("🔓 Masuk Ke Panel"):
+            if input_pass == OWNER_PASSWORD:
+                st.session_state.owner_authenticated = True
+                st.success("Akses Diterima!")
+                st.rerun()
+            else:
+                st.error("Password salah!")
+    else:
+        st.success("✅ Akses Terverifikasi")
+        if st.button("🔒 Keluar / Kunci Kembali"):
+            st.session_state.owner_authenticated = False
+            st.rerun()
+
+        st.divider()
         st.subheader("➕ Tambah Buku Pribadi Baru")
         new_title = st.text_input(
             "Judul Buku:", placeholder="Masukkan judul..."
