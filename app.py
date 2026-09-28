@@ -243,7 +243,7 @@ if st.session_state.selected_book_id is not None:
         }
 
     # TAB PEMBACA AMAN BEBAS 404
-    tab_txt, tab_html = st.tabs(["📖 Baca Teks Langsung (Di Jamin Ada)", "🌐 Versi HTML / Gambar"])
+    tab_txt, tab_html = st.tabs(["📖 Baca "])
 
     with tab_txt:
         # Teks polos dijamin 100% tidak pernah 404 untuk semua buku Gutenberg
