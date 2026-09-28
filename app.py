@@ -69,8 +69,6 @@ def is_owner_verified():
 
     return False
 
-
-# --- FUNGSI AMBIL TEKS OTOMATIS (ANTI 404) ---
 @st.cache_data(show_spinner="Memuat isi buku...")
 def fetch_book_text(book_id):
     urls = [
@@ -322,7 +320,7 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. BACA TEKS (PAPER-WHITE READER)
+# 1. BACA TEKS (OPTIMATED PAPER-WHITE READER)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
@@ -365,7 +363,7 @@ if st.session_state.selected_book_id is not None:
 
     if is_priv:
         if is_pdf:
-            # Tampilkan PDF Viewer langsung
+            # Tampilkan viewer PDF secara efisien
             pdf_b64 = st.session_state.private_text_content
             pdf_display = f'<iframe src="data:application/pdf;base64,{pdf_b64}" width="100%" height="700px" type="application/pdf"></iframe>'
             st.markdown(pdf_display, unsafe_allow_html=True)
@@ -386,7 +384,7 @@ if st.session_state.selected_book_id is not None:
             st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. PANEL BUKU PRIBADI (PDF EMBED & EKSTRAKSI Sempurna)
+# 2. PANEL BUKU PRIBADI (PENGOLAHAN RINGAN)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
     st.markdown(
@@ -449,7 +447,7 @@ elif st.session_state.active_view == "private_vault":
                 if text_file.name.endswith(".txt"):
                     final_content = text_file.read().decode("utf-8", errors="ignore")
                 elif text_file.name.endswith(".pdf"):
-                    # Ekstraksi teks via pypdf
+                    # Ekstraksi Teks Bersih PDF
                     extracted_text = ""
                     if HAS_PYPDF:
                         try:
@@ -458,16 +456,17 @@ elif st.session_state.active_view == "private_vault":
                             for page in reader.pages:
                                 t = page.extract_text()
                                 if t:
-                                    pages_text.append(t)
+                                    pages_text.append(t.strip())
                             extracted_text = "\n\n".join(pages_text)
                         except Exception:
                             extracted_text = ""
 
-                    # Jika teks berhasil diekstrak dari PDF
+                    # Utamakan penggunaan Teks Hasil Ekstraksi (Jauh lebih ringan & tanpa lag)
                     if extracted_text and len(extracted_text.strip()) > 50:
                         final_content = extracted_text
+                        is_pdf_file = False
                     else:
-                        # Jika PDF berupa scan/gambar, simpan sebagai PDF Viewer Base64
+                        # Fallback jika PDF berupa gambar scan penuh
                         text_file.seek(0)
                         pdf_bytes = text_file.read()
                         final_content = base64.b64encode(pdf_bytes).decode()
