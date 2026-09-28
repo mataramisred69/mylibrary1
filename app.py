@@ -1,8 +1,8 @@
 import math
 import random
-from engine import GutenbergEngine
 import requests
 import streamlit as st
+from engine import GutenbergEngine
 
 
 @st.cache_resource
@@ -18,6 +18,26 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# --- KONFIGURASI PASSWORD BUKU PRIBADI ---
+# Silakan ganti "f15rahasia" dengan password pilihan Anda sendiri
+PRIVATE_PASSWORD = "f15rahasia"
+
+# --- DATABASE BUKU PRIBADI (HANYA BISA DIBUKA DENGAN PASSWORD) ---
+# Anda bisa menambahkan buku pribadi di sini
+PRIVATE_BOOKS = {
+    "priv_1": {
+        "title": "Buku Catatan Rahasia Saya",
+        "author": "Penulis Pribadi",
+        "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya Anda yang bisa membaca ini setelah memasukkan password yang benar.",
+    },
+    # Tambahkan buku pribadi lain di bawah jika ada:
+    # "priv_2": {
+    #     "title": "Judul Buku 2",
+    #     "author": "Penulis",
+    #     "content": "Isi naskah..."
+    # }
+}
 
 
 # --- FUNGSI AMBIL TEKS OTOMATIS (ANTI 404) ---
@@ -48,6 +68,11 @@ if "selected_book_title" not in st.session_state:
     st.session_state.selected_book_title = ""
 if "selected_book_author" not in st.session_state:
     st.session_state.selected_book_author = ""
+if "is_private_book" not in st.session_state:
+    st.session_state.is_private_book = False
+if "private_text_content" not in st.session_state:
+    st.session_state.private_text_content = ""
+
 if "search_input" not in st.session_state:
     st.session_state.search_input = ""
 if "current_page" not in st.session_state:
@@ -55,12 +80,12 @@ if "current_page" not in st.session_state:
 
 if "saved_books" not in st.session_state:
     st.session_state.saved_books = {}
-if "reading_progress" not in st.session_state:
-    st.session_state.reading_progress = {}
 if "active_view" not in st.session_state:
     st.session_state.active_view = "catalog"
+if "is_authenticated" not in st.session_state:
+    st.session_state.is_authenticated = False
 
-# CSS LIGHT MODE + READER PAPER-WHITE DENGAN FONT TAJAM & TERANG
+# CSS LIGHT MODE + PAPER-WHITE READER
 st.markdown(
     """
     <style>
@@ -139,7 +164,7 @@ st.markdown(
         margin-bottom: 8px;
     }
 
-    /* CUSTOM CONTAINER BACA TERANG & TAJAM */
+    /* CONTAINER BACA TERANG & TAJAM */
     .paper-reader {
         background-color: #ffffff !important;
         border: 1px solid #cbd5e1 !important;
@@ -147,7 +172,7 @@ st.markdown(
         padding: 24px !important;
         height: 680px !important;
         overflow-y: scroll !important;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05) !important;
         font-family: 'Georgia', 'Cambria', 'Times New Roman', serif !important;
         font-size: 18px !important;
         line-height: 1.8 !important;
@@ -210,6 +235,10 @@ with st.sidebar:
             st.session_state.active_view = "my_library"
             st.rerun()
 
+    if st.button("🔒 Buku Pribadi (Khusus)", use_container_width=True):
+        st.session_state.active_view = "private_vault"
+        st.rerun()
+
     st.divider()
     st.header("✨ Kategori Lengkap")
 
@@ -259,113 +288,119 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. BACA TEKS TERANG & TAJAM (PAPER-WHITE READER)
+# 1. BACA TEKS (PROGRES DIHAPUS, PAPERCLEAN)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
     b_title = st.session_state.selected_book_title
     b_author = st.session_state.selected_book_author
-    cover_url = (
-        f"https://www.gutenberg.org/cache/epub/{b_id}/pg{b_id}.cover.medium.jpg"
-    )
+    is_priv = st.session_state.is_private_book
 
     col_back, col_save = st.columns([2, 1])
     with col_back:
-        if st.button("⬅️ Kembali ke Katalog", use_container_width=True):
+        if st.button("⬅️ Kembali", use_container_width=True):
             st.session_state.selected_book_id = None
             st.rerun()
     with col_save:
-        is_saved = b_id in st.session_state.saved_books
-        save_label = (
-            "📌 Tersimpan di Buku Saya" if is_saved else "🔖 Simpan Buku"
-        )
-        if st.button(save_label, use_container_width=True):
-            if is_saved:
-                del st.session_state.saved_books[b_id]
-            else:
-                st.session_state.saved_books[b_id] = {
-                    "title": b_title,
-                    "author": b_author,
-                    "cover": cover_url,
-                }
-            st.rerun()
+        if not is_priv:
+            is_saved = b_id in st.session_state.saved_books
+            save_label = (
+                "📌 Tersimpan di Buku Saya" if is_saved else "🔖 Simpan Buku"
+            )
+            if st.button(save_label, use_container_width=True):
+                if is_saved:
+                    del st.session_state.saved_books[b_id]
+                else:
+                    st.session_state.saved_books[b_id] = {
+                        "title": b_title,
+                        "author": b_author,
+                        "cover": f"https://www.gutenberg.org/cache/epub/{b_id}/pg{b_id}.cover.medium.jpg",
+                    }
+                st.rerun()
 
     st.markdown("---")
     st.markdown(
         f"<div class='f15-header'>{b_title}</div>", unsafe_allow_html=True
     )
-    st.caption(f"Penulis: {b_author} | ID Buku: #{b_id}")
-
-    # Pengatur Progress Baca
-    curr_prog = st.session_state.reading_progress.get(b_id, {}).get(
-        "progress_pct", 0
+    st.caption(
+        f"Penulis: {b_author} | {'Buku Pribadi' if is_priv else f'ID Buku: #{b_id}'}"
     )
-    new_prog = st.slider(
-        "📊 Update Progress Membaca Anda (%):", 0, 100, curr_prog
-    )
-    if new_prog != curr_prog:
-        st.session_state.reading_progress[b_id] = {
-            "title": b_title,
-            "author": b_author,
-            "cover": cover_url,
-            "progress_pct": new_prog,
-        }
 
     st.write("")
 
-    # AMBIL TEKS BUKU VIA BACKEND
-    book_content = fetch_book_text(b_id)
+    # Jika buku pribadi
+    if is_priv:
+        book_content = st.session_state.private_text_content
+    else:
+        book_content = fetch_book_text(b_id)
 
     if book_content:
-        # Render HTML khusus Mode Kertas Putih Bersih
         st.markdown(
             f'<div class="paper-reader">{book_content}</div>',
             unsafe_allow_html=True,
         )
     else:
         st.error("Naskah teks tidak dapat diunduh secara langsung.")
-        fallback_page = f"https://www.gutenberg.org/ebooks/{b_id}"
-        st.info(
-            f"Silakan buka naskah melalui halaman resmi Gutenberg: [Buka Buku #{b_id}]({fallback_page})"
-        )
 
 # ==========================================
-# 2. HALAMAN "BUKU SAYA" (PUSTAKA & PROGRESS)
+# 2. HALAMAN "BUKU PRIBADI" (PRIVAT BER-PASSWORD)
+# ==========================================
+elif st.session_state.active_view == "private_vault":
+    st.markdown(
+        "<div class='f15-header'>🔒 Area Buku Pribadi</div>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<div class='f15-sub'>Koleksi Khusus Yang Hanya Bisa Diakses Oleh Anda</div>",
+        unsafe_allow_html=True,
+    )
+
+    if not st.session_state.is_authenticated:
+        pwd_input = st.text_input(
+            "Masukkan Kata Sandi Khusus:",
+            type="password",
+            placeholder="Ketik password di sini...",
+        )
+        if st.button("🔓 Buka Akses"):
+            if pwd_input == PRIVATE_PASSWORD:
+                st.session_state.is_authenticated = True
+                st.success("Akses Diterima!")
+                st.rerun()
+            else:
+                st.error("Kata sandi salah!")
+    else:
+        st.success("🔑 Status: Akses Terverifikasi")
+        if st.button("🔒 Kunci Kembali"):
+            st.session_state.is_authenticated = False
+            st.rerun()
+
+        st.divider()
+        st.subheader("📚 Daftar Buku Pribadi Anda")
+
+        for p_id, p_info in PRIVATE_BOOKS.items():
+            st.write(f"**{p_info['title']}**")
+            st.caption(f"Penulis: {p_info['author']}")
+            if st.button("📖 Baca Buku Ini", key=f"read_priv_{p_id}"):
+                st.session_state.selected_book_id = p_id
+                st.session_state.selected_book_title = p_info["title"]
+                st.session_state.selected_book_author = p_info["author"]
+                st.session_state.is_private_book = True
+                st.session_state.private_text_content = p_info["content"]
+                st.rerun()
+            st.divider()
+
+# ==========================================
+# 3. HALAMAN "BUKU SAYA" (BOOKMARK)
 # ==========================================
 elif st.session_state.active_view == "my_library":
     st.markdown(
         "<div class='f15-header'>📖 Buku Saya</div>", unsafe_allow_html=True
     )
     st.markdown(
-        "<div class='f15-sub'>Daftar Buku Yang Sedang Dibaca & Koleksi Disimpan</div>",
+        "<div class='f15-sub'>Daftar Koleksi Disimpan</div>",
         unsafe_allow_html=True,
     )
 
-    st.subheader("🔥 Lanjut Baca")
-    reading_list = st.session_state.reading_progress
-
-    if reading_list:
-        for r_id, r_info in reading_list.items():
-            col_img, col_det = st.columns([1, 4])
-            with col_img:
-                st.image(r_info["cover"], width=100)
-            with col_det:
-                st.write(f"**{r_info['title']}**")
-                st.caption(f"oleh {r_info['author']}")
-                st.progress(r_info["progress_pct"] / 100)
-                st.write(f"**{r_info['progress_pct']}% selesai**")
-                if st.button("📖 Lanjutkan Membaca", key=f"cont_{r_id}"):
-                    st.session_state.selected_book_id = r_id
-                    st.session_state.selected_book_title = r_info["title"]
-                    st.session_state.selected_book_author = r_info["author"]
-                    st.rerun()
-            st.divider()
-    else:
-        st.info(
-            "Belum ada buku yang sedang dibaca. Buka buku di katalog dan atur progress bacanya!"
-        )
-
-    st.subheader("🔖 Buku Yang Disimpan")
     saved_dict = st.session_state.saved_books
 
     if saved_dict:
@@ -397,12 +432,13 @@ elif st.session_state.active_view == "my_library":
                             st.session_state.selected_book_author = s_info[
                                 "author"
                             ]
+                            st.session_state.is_private_book = False
                             st.rerun()
     else:
         st.info("Belum ada buku yang disimpan di bookmark.")
 
 # ==========================================
-# 3. KATALOG UTAMA
+# 4. KATALOG UTAMA
 # ==========================================
 else:
     st.markdown(
@@ -489,6 +525,7 @@ else:
                             st.session_state.selected_book_id = b_id
                             st.session_state.selected_book_title = b_title
                             st.session_state.selected_book_author = b_author
+                            st.session_state.is_private_book = False
                             st.rerun()
 
                         st.write("")
