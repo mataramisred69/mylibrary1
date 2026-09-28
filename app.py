@@ -40,7 +40,6 @@ if "private_books_db" not in st.session_state:
             "author": "Penulis Pribadi",
             "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya Anda yang bisa melihat halaman ini.",
             "cover": "https://via.placeholder.com/150x200?text=Buku+Pribadi",
-            "is_pdf_b64": False,
         }
     }
 
@@ -69,6 +68,8 @@ def is_owner_verified():
 
     return False
 
+
+# --- FUNGSI AMBIL TEKS OTOMATIS (ANTI 404) ---
 @st.cache_data(show_spinner="Memuat isi buku...")
 def fetch_book_text(book_id):
     urls = [
@@ -100,8 +101,6 @@ if "is_private_book" not in st.session_state:
     st.session_state.is_private_book = False
 if "private_text_content" not in st.session_state:
     st.session_state.private_text_content = ""
-if "is_pdf_b64" not in st.session_state:
-    st.session_state.is_pdf_b64 = False
 
 if "search_input" not in st.session_state:
     st.session_state.search_input = ""
@@ -114,6 +113,8 @@ if "active_view" not in st.session_state:
     st.session_state.active_view = "catalog"
 if "owner_authenticated" not in st.session_state:
     st.session_state.owner_authenticated = False
+if "editing_priv_key" not in st.session_state:
+    st.session_state.editing_priv_key = None
 
 # CSS LIGHT MODE + PAPER-WHITE READER
 st.markdown(
@@ -320,14 +321,13 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. BACA TEKS (OPTIMATED PAPER-WHITE READER)
+# 1. BACA TEKS (PAPER-WHITE READER)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
     b_title = st.session_state.selected_book_title
     b_author = st.session_state.selected_book_author
     is_priv = st.session_state.is_private_book
-    is_pdf = st.session_state.is_pdf_b64
 
     col_back, col_save = st.columns([2, 1])
     with col_back:
@@ -362,17 +362,11 @@ if st.session_state.selected_book_id is not None:
     st.write("")
 
     if is_priv:
-        if is_pdf:
-            # Tampilkan viewer PDF secara efisien
-            pdf_b64 = st.session_state.private_text_content
-            pdf_display = f'<iframe src="data:application/pdf;base64,{pdf_b64}" width="100%" height="700px" type="application/pdf"></iframe>'
-            st.markdown(pdf_display, unsafe_allow_html=True)
-        else:
-            book_content = st.session_state.private_text_content
-            st.markdown(
-                f'<div class="paper-reader">{book_content}</div>',
-                unsafe_allow_html=True,
-            )
+        book_content = st.session_state.private_text_content
+        st.markdown(
+            f'<div class="paper-reader">{book_content}</div>',
+            unsafe_allow_html=True,
+        )
     else:
         book_content = fetch_book_text(b_id)
         if book_content:
@@ -384,7 +378,7 @@ if st.session_state.selected_book_id is not None:
             st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. PANEL BUKU PRIBADI (PENGOLAHAN RINGAN)
+# 2. PANEL BUKU PRIBADI (TAMBAH & EDIT BUKU)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
     st.markdown(
@@ -414,95 +408,148 @@ elif st.session_state.active_view == "private_vault":
         st.success("✅ Akses Terverifikasi")
         if st.button("🔒 Keluar / Kunci Kembali"):
             st.session_state.owner_authenticated = False
+            st.session_state.editing_priv_key = None
             st.rerun()
 
         st.divider()
-        st.subheader("➕ Tambah Buku Pribadi Baru")
 
-        new_title = st.text_input(
-            "Judul Buku:", placeholder="Masukkan judul..."
-        )
-        new_author = st.text_input(
-            "Penulis:", placeholder="Masukkan nama penulis..."
-        )
+        # MODE EDIT BUKU PRIBADI
+        if st.session_state.editing_priv_key is not None:
+            edit_key = st.session_state.editing_priv_key
+            target_item = st.session_state.private_books_db.get(edit_key, {})
 
-        cover_file = st.file_uploader(
-            "🖼️ Upload Sampul Buku (JPG/PNG):", type=["jpg", "jpeg", "png"]
-        )
+            st.subheader(f"✏️ Edit Buku: {target_item.get('title', '')}")
 
-        st.markdown("---")
-        upload_mode = st.radio(
-            "Pilih Metode Isi Naskah Buku:",
-            ["📁 Upload File Naskah (TXT / PDF)", "✍️ Ketik / Paste Manual"],
-        )
-
-        final_content = ""
-        is_pdf_file = False
-
-        if upload_mode == "📁 Upload File Naskah (TXT / PDF)":
-            text_file = st.file_uploader(
-                "Upload File Naskah (.txt atau .pdf):", type=["txt", "pdf"]
+            edit_title = st.text_input(
+                "Judul Buku:", value=target_item.get("title", "")
             )
-            if text_file is not None:
-                if text_file.name.endswith(".txt"):
-                    final_content = text_file.read().decode("utf-8", errors="ignore")
-                elif text_file.name.endswith(".pdf"):
-                    # Ekstraksi Teks Bersih PDF
-                    extracted_text = ""
-                    if HAS_PYPDF:
-                        try:
-                            reader = pypdf.PdfReader(text_file)
-                            pages_text = []
-                            for page in reader.pages:
-                                t = page.extract_text()
-                                if t:
-                                    pages_text.append(t.strip())
-                            extracted_text = "\n\n".join(pages_text)
-                        except Exception:
-                            extracted_text = ""
+            edit_author = st.text_input(
+                "Penulis:", value=target_item.get("author", "")
+            )
 
-                    # Utamakan penggunaan Teks Hasil Ekstraksi (Jauh lebih ringan & tanpa lag)
-                    if extracted_text and len(extracted_text.strip()) > 50:
-                        final_content = extracted_text
-                        is_pdf_file = False
+            edit_cover_file = st.file_uploader(
+                "🖼️ Ganti Sampul Buku (Biarkan kosong jika tidak diganti):",
+                type=["jpg", "jpeg", "png"],
+            )
+
+            edit_content = st.text_area(
+                "Isi Naskah Buku:",
+                value=target_item.get("content", ""),
+                height=300,
+            )
+
+            col_btn_e1, col_btn_e2 = st.columns(2)
+            with col_btn_e1:
+                if st.button("💾 Simpan Perubahan", use_container_width=True):
+                    if edit_title and edit_content:
+                        # Olah cover jika ada upload baru
+                        if edit_cover_file is not None:
+                            bytes_data = edit_cover_file.getvalue()
+                            base64_img = base64.b64encode(bytes_data).decode()
+                            mime_type = edit_cover_file.type
+                            final_cover = f"data:{mime_type};base64,{base64_img}"
+                        else:
+                            final_cover = target_item.get(
+                                "cover",
+                                "https://via.placeholder.com/150x200?text=Buku+Pribadi",
+                            )
+
+                        st.session_state.private_books_db[edit_key] = {
+                            "title": edit_title,
+                            "author": edit_author if edit_author else "Pribadi",
+                            "content": edit_content,
+                            "cover": final_cover,
+                        }
+                        st.session_state.editing_priv_key = None
+                        st.success("Buku berhasil diperbarui!")
+                        st.rerun()
                     else:
-                        # Fallback jika PDF berupa gambar scan penuh
-                        text_file.seek(0)
-                        pdf_bytes = text_file.read()
-                        final_content = base64.b64encode(pdf_bytes).decode()
-                        is_pdf_file = True
+                        st.warning("Judul dan isi naskah tidak boleh kosong.")
 
+            with col_btn_e2:
+                if st.button("❌ Batal Edit", use_container_width=True):
+                    st.session_state.editing_priv_key = None
+                    st.rerun()
+
+        # MODE TAMBAH BUKU PRIBADI BARU
         else:
-            final_content = st.text_area(
-                "Isi Naskah Buku (Teks Polos):",
-                height=200,
-                placeholder="Ketik atau tempel naskah di sini...",
+            st.subheader("➕ Tambah Buku Pribadi Baru")
+
+            new_title = st.text_input(
+                "Judul Buku:", placeholder="Masukkan judul..."
+            )
+            new_author = st.text_input(
+                "Penulis:", placeholder="Masukkan nama penulis..."
             )
 
-        if st.button("💾 Simpan Buku Pribadi", use_container_width=True):
-            if new_title and final_content:
-                if cover_file is not None:
-                    bytes_data = cover_file.getvalue()
-                    base64_img = base64.b64encode(bytes_data).decode()
-                    mime_type = cover_file.type
-                    final_cover = f"data:{mime_type};base64,{base64_img}"
-                else:
-                    final_cover = f"https://via.placeholder.com/150x200?text={new_title.replace(' ', '+')}"
+            cover_file = st.file_uploader(
+                "🖼️ Upload Sampul Buku (JPG/PNG):", type=["jpg", "jpeg", "png"]
+            )
 
-                p_key = f"priv_{len(st.session_state.private_books_db) + 1}"
-                st.session_state.private_books_db[p_key] = {
-                    "title": new_title,
-                    "author": new_author if new_author else "Pribadi",
-                    "content": final_content,
-                    "cover": final_cover,
-                    "is_pdf_b64": is_pdf_file,
-                }
-                st.success(
-                    f"Buku '{new_title}' berhasil ditambahkan ke koleksi pribadi!"
+            st.markdown("---")
+            upload_mode = st.radio(
+                "Pilih Metode Isi Naskah Buku:",
+                ["📁 Upload File Naskah (TXT / PDF)", "✍️ Ketik / Paste Manual"],
+            )
+
+            final_content = ""
+
+            if upload_mode == "📁 Upload File Naskah (TXT / PDF)":
+                text_file = st.file_uploader(
+                    "Upload File Naskah (.txt atau .pdf):", type=["txt", "pdf"]
                 )
-                st.rerun()
+                if text_file is not None:
+                    if text_file.name.endswith(".txt"):
+                        final_content = text_file.read().decode("utf-8", errors="ignore")
+                    elif text_file.name.endswith(".pdf"):
+                        with st.spinner("Memproses file PDF... Mohon tunggu sebentar."):
+                            extracted_text = []
+                            if HAS_PYPDF:
+                                try:
+                                    reader = pypdf.PdfReader(text_file)
+                                    total_pages = min(len(reader.pages), 150)
+                                    for i in range(total_pages):
+                                        t = reader.pages[i].extract_text()
+                                        if t:
+                                            extracted_text.append(t)
+                                except Exception:
+                                    pass
+
+                            if extracted_text:
+                                final_content = "\n\n".join(extracted_text)
+                            else:
+                                final_content = "PDF ini berupa scanned-image atau dilindungi enkripsi sehingga teks tidak dapat diekstrak."
+
             else:
-                st.warning("Judul dan isi naskah wajib diisi.")
+                final_content = st.text_area(
+                    "Isi Naskah Buku (Teks Polos):",
+                    height=200,
+                    placeholder="Ketik atau tempel naskah di sini...",
+                )
+
+            if st.button("💾 Simpan Buku Pribadi", use_container_width=True):
+                if new_title and final_content:
+                    if cover_file is not None:
+                        bytes_data = cover_file.getvalue()
+                        base64_img = base64.b64encode(bytes_data).decode()
+                        mime_type = cover_file.type
+                        final_cover = f"data:{mime_type};base64,{base64_img}"
+                    else:
+                        final_cover = f"https://via.placeholder.com/150x200?text={new_title.replace(' ', '+')}"
+
+                    p_key = f"priv_{len(st.session_state.private_books_db) + 1}"
+                    st.session_state.private_books_db[p_key] = {
+                        "title": new_title,
+                        "author": new_author if new_author else "Pribadi",
+                        "content": final_content,
+                        "cover": final_cover,
+                    }
+                    st.success(
+                        f"Buku '{new_title}' berhasil ditambahkan ke koleksi pribadi!"
+                    )
+                    st.rerun()
+                else:
+                    st.warning("Judul dan isi naskah wajib diisi.")
 
         st.divider()
         st.subheader("📚 Koleksi Buku Pribadi Anda")
@@ -532,14 +579,19 @@ elif st.session_state.active_view == "private_vault":
                             """,
                                 unsafe_allow_html=True,
                             )
-                            if st.button("📖 Baca", key=f"read_priv_{p_id}"):
-                                st.session_state.selected_book_id = p_id
-                                st.session_state.selected_book_title = p_info["title"]
-                                st.session_state.selected_book_author = p_info["author"]
-                                st.session_state.is_private_book = True
-                                st.session_state.private_text_content = p_info["content"]
-                                st.session_state.is_pdf_b64 = p_info.get("is_pdf_b64", False)
-                                st.rerun()
+                            col_a1, col_a2 = st.columns(2)
+                            with col_a1:
+                                if st.button("📖 Baca", key=f"read_priv_{p_id}", use_container_width=True):
+                                    st.session_state.selected_book_id = p_id
+                                    st.session_state.selected_book_title = p_info["title"]
+                                    st.session_state.selected_book_author = p_info["author"]
+                                    st.session_state.is_private_book = True
+                                    st.session_state.private_text_content = p_info["content"]
+                                    st.rerun()
+                            with col_a2:
+                                if st.button("✏️ Edit", key=f"edit_priv_{p_id}", use_container_width=True):
+                                    st.session_state.editing_priv_key = p_id
+                                    st.rerun()
 
 # ==========================================
 # 3. HALAMAN "BUKU SAYA" (BOOKMARK)
@@ -585,7 +637,6 @@ elif st.session_state.active_view == "my_library":
                                 "author"
                             ]
                             st.session_state.is_private_book = False
-                            st.session_state.is_pdf_b64 = False
                             st.rerun()
     else:
         st.info("Belum ada buku yang disimpan di bookmark.")
@@ -679,7 +730,6 @@ else:
                             st.session_state.selected_book_title = b_title
                             st.session_state.selected_book_author = b_author
                             st.session_state.is_private_book = False
-                            st.session_state.is_pdf_b64 = False
                             st.rerun()
 
                         st.write("")
