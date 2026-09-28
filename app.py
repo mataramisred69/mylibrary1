@@ -30,8 +30,8 @@ st.set_page_config(
 )
 
 # --- KONFIGURASI PEMILIK & GITHUB ---
-MY_EMAIL = "mataram@gmail.com"
-OWNER_PASSWORD = "farabi12"
+MY_EMAIL = "sahjihan@gmail.com"
+OWNER_PASSWORD = "f15rahasia"
 
 # Konfigurasi Repositori GitHub Anda
 GITHUB_REPO = "mylibrary1"
@@ -153,7 +153,7 @@ def load_github_private_books():
                     except Exception:
                         content = "Gagal mengekstrak teks dari file PDF."
 
-                # Cari gambar sampul dengan nama yang sama (misal: komet.jpg / komet.png)
+                # Cari gambar sampul dengan nama yang sama
                 cover_url = f"https://via.placeholder.com/150x200?text={clean_title.replace(' ', '+')}"
                 for img_ext in [".jpg", ".jpeg", ".png"]:
                     possible_cover = os.path.join(
@@ -176,6 +176,7 @@ def load_github_private_books():
                         "author": "Pribadi",
                         "content": content,
                         "cover": cover_url,
+                        "raw_filename": base_name,
                     }
     return books
 
@@ -191,6 +192,11 @@ if "is_private_book" not in st.session_state:
     st.session_state.is_private_book = False
 if "private_text_content" not in st.session_state:
     st.session_state.private_text_content = ""
+
+if "edit_title" not in st.session_state:
+    st.session_state.edit_title = ""
+if "edit_content" not in st.session_state:
+    st.session_state.edit_content = ""
 
 if "search_input" not in st.session_state:
     st.session_state.search_input = ""
@@ -466,7 +472,7 @@ if st.session_state.selected_book_id is not None:
             st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. PANEL BUKU PRIBADI (UPLOAD & EDIT DENGAN DUKUNGAN GITHUB API)
+# 2. PANEL BUKU PRIBADI (FORM EDIT TERKAIT BUKU TERPILIH)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
     st.markdown(
@@ -474,7 +480,7 @@ elif st.session_state.active_view == "private_vault":
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<div class='f15-sub'>Upload & Edit Buku/Sampul Permanen Terhubung ke GitHub</div>",
+        "<div class='f15-sub'>Upload, Edit Typo, & Perbarui Sampul Permanen ke GitHub</div>",
         unsafe_allow_html=True,
     )
 
@@ -499,19 +505,22 @@ elif st.session_state.active_view == "private_vault":
             st.rerun()
 
         st.divider()
-        st.subheader("➕ Tambah / Edit Buku Pribadi Baru")
+        st.subheader("➕ Tambah / Edit Buku Pribadi")
 
         new_title = st.text_input(
-            "Judul Buku:", placeholder="Masukkan judul..."
+            "Judul Buku (Gunakan judul sama untuk menimpa/edit):",
+            value=st.session_state.edit_title,
+            placeholder="Masukkan judul...",
         )
         cover_file = st.file_uploader(
-            "🖼️ Upload Sampul Buku (JPG/PNG):", type=["jpg", "jpeg", "png"]
+            "🖼️ Upload Sampul Baru (Opsional - JPG/PNG):",
+            type=["jpg", "jpeg", "png"],
         )
 
         st.markdown("---")
         upload_mode = st.radio(
             "Pilih Metode Isi Naskah Buku:",
-            ["📁 Upload File Naskah (TXT)", "✍️ Ketik / Paste Manual"],
+            ["✍️ Ketik / Paste / Edit Manual", "📁 Upload File Naskah (TXT)"],
         )
 
         file_bytes_to_push = None
@@ -519,18 +528,19 @@ elif st.session_state.active_view == "private_vault":
 
         if upload_mode == "📁 Upload File Naskah (TXT)":
             text_file = st.file_uploader(
-                "Upload File Naskah (.txt):", type=["txt"]
+                "Upload File Naskah Baru (.txt):", type=["txt"]
             )
             if text_file is not None:
                 file_bytes_to_push = text_file.getvalue()
         else:
             text_content_to_push = st.text_area(
-                "Isi Naskah Buku (Teks Polos):",
-                height=200,
-                placeholder="Ketik atau tempel naskah di sini...",
+                "Isi Naskah Buku (Bisa diedit langsung jika ada typo):",
+                value=st.session_state.edit_content,
+                height=250,
+                placeholder="Ketik, tempel, atau perbaiki naskah di sini...",
             )
 
-        if st.button("💾 Simpan Otomatis ke GitHub", use_container_width=True):
+        if st.button("💾 Simpan Perubahan ke GitHub", use_container_width=True):
             if new_title and (file_bytes_to_push or text_content_to_push):
                 slug_name = (
                     new_title.lower()
@@ -539,7 +549,7 @@ elif st.session_state.active_view == "private_vault":
                     .replace('"', "")
                 )
 
-                # 1. Simpan File Teks ke private_books/slug.txt
+                # 1. Simpan/Overwrite File Teks ke private_books/slug.txt
                 txt_filename = f"private_books/{slug_name}.txt"
                 if file_bytes_to_push:
                     txt_bytes = file_bytes_to_push
@@ -549,23 +559,25 @@ elif st.session_state.active_view == "private_vault":
                 success_txt, msg_txt = push_file_to_github(
                     txt_filename,
                     txt_bytes,
-                    f"Add/Edit private book text: {new_title}",
+                    f"Update/Edit private book text: {new_title}",
                 )
 
-                # 2. Simpan Sampul jika ada ke private_books/slug.jpg
+                # 2. Simpan/Overwrite Sampul jika ada
                 if cover_file is not None and success_txt:
                     img_ext = os.path.splitext(cover_file.name)[1].lower()
                     img_filename = f"private_books/{slug_name}{img_ext}"
                     push_file_to_github(
                         img_filename,
                         cover_file.getvalue(),
-                        f"Add/Edit cover for {new_title}",
+                        f"Update cover for {new_title}",
                     )
 
                 if success_txt:
                     st.success(
-                        f"Buku '{new_title}' dan sampulnya berhasil tersimpan permanen ke GitHub!"
+                        f"Perubahan buku '{new_title}' berhasil diperbarui permanen ke GitHub!"
                     )
+                    st.session_state.edit_title = ""
+                    st.session_state.edit_content = ""
                     st.rerun()
                 else:
                     st.error(f"Gagal menyimpan ke GitHub: {msg_txt}")
@@ -600,13 +612,32 @@ elif st.session_state.active_view == "private_vault":
                             """,
                                 unsafe_allow_html=True,
                             )
-                            if st.button("📖 Baca", key=f"read_gh_priv_{p_id}"):
-                                st.session_state.selected_book_id = p_id
-                                st.session_state.selected_book_title = p_info["title"]
-                                st.session_state.selected_book_author = p_info["author"]
-                                st.session_state.is_private_book = True
-                                st.session_state.private_text_content = p_info["content"]
-                                st.rerun()
+                            col_b1, col_b2 = st.columns(2)
+                            with col_b1:
+                                if st.button(
+                                    "📖 Baca", key=f"read_gh_priv_{p_id}"
+                                ):
+                                    st.session_state.selected_book_id = p_id
+                                    st.session_state.selected_book_title = (
+                                        p_info["title"]
+                                    )
+                                    st.session_state.selected_book_author = (
+                                        p_info["author"]
+                                    )
+                                    st.session_state.is_private_book = True
+                                    st.session_state.private_text_content = (
+                                        p_info["content"]
+                                    )
+                                    st.rerun()
+                            with col_b2:
+                                if st.button("✏️ Edit", key=f"edit_gh_priv_{p_id}"):
+                                    st.session_state.edit_title = p_info[
+                                        "title"
+                                    ]
+                                    st.session_state.edit_content = p_info[
+                                        "content"
+                                    ]
+                                    st.rerun()
         else:
             st.info("Belum ada file buku di dalam folder `private_books/` di GitHub.")
 
@@ -800,4 +831,4 @@ else:
     else:
         st.warning(
             f"Buku dengan kata kunci '{query_clean}' tidak ditemukan. Coba gunakan kata kunci lain!"
-        )             
+        )
