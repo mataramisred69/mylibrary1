@@ -19,25 +19,33 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# --- KONFIGURASI PASSWORD BUKU PRIBADI ---
-# Silakan ganti "f15rahasia" dengan password pilihan Anda sendiri
-PRIVATE_PASSWORD = "f15rahasia"
+# --- KONFIGURASI EMAIL PEMILIK (AKSES OTOMATIS) ---
+# Masukkan email Google/GitHub yang Anda gunakan di Streamlit Cloud
+MY_EMAIL = "mataramisred69@gmail.com"
 
-# --- DATABASE BUKU PRIBADI (HANYA BISA DIBUKA DENGAN PASSWORD) ---
-# Anda bisa menambahkan buku pribadi di sini
+# --- DATABASE BUKU PRIBADI (KHUSUS PEMILIK EMAIL) ---
 PRIVATE_BOOKS = {
     "priv_1": {
         "title": "Buku Catatan Rahasia Saya",
         "author": "Penulis Pribadi",
-        "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya Anda yang bisa membaca ini setelah memasukkan password yang benar.",
+        "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya email Anda yang terverifikasi yang bisa mengakses naskah ini secara otomatis.",
     },
-    # Tambahkan buku pribadi lain di bawah jika ada:
-    # "priv_2": {
-    #     "title": "Judul Buku 2",
-    #     "author": "Penulis",
-    #     "content": "Isi naskah..."
-    # }
 }
+
+
+# --- FUNGSI DETEKSI EMAIL USER ---
+def get_current_user_email():
+    # Mengambil email dari sesi login Streamlit Cloud
+    try:
+        if hasattr(st, "experimental_user") and hasattr(
+            st.experimental_user, "email"
+        ):
+            return st.experimental_user.email
+        elif hasattr(st, "user") and hasattr(st.user, "email"):
+            return st.user.email
+    except Exception:
+        pass
+    return None
 
 
 # --- FUNGSI AMBIL TEKS OTOMATIS (ANTI 404) ---
@@ -82,8 +90,6 @@ if "saved_books" not in st.session_state:
     st.session_state.saved_books = {}
 if "active_view" not in st.session_state:
     st.session_state.active_view = "catalog"
-if "is_authenticated" not in st.session_state:
-    st.session_state.is_authenticated = False
 
 # CSS LIGHT MODE + PAPER-WHITE READER
 st.markdown(
@@ -218,6 +224,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+current_user_email = get_current_user_email()
+
 # ==========================================
 # SIDEBAR: NAVIGASI & KATEGORI LENGKAP
 # ==========================================
@@ -235,9 +243,14 @@ with st.sidebar:
             st.session_state.active_view = "my_library"
             st.rerun()
 
-    if st.button("🔒 Buku Pribadi (Khusus)", use_container_width=True):
-        st.session_state.active_view = "private_vault"
-        st.rerun()
+    # Tampilkan tombol hanya jika email terdeteksi / terverifikasi
+    if (
+        current_user_email is None
+        or current_user_email.lower() == MY_EMAIL.lower()
+    ):
+        if st.button("🔒 Panel Buku Pribadi", use_container_width=True):
+            st.session_state.active_view = "private_vault"
+            st.rerun()
 
     st.divider()
     st.header("✨ Kategori Lengkap")
@@ -288,7 +301,7 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. BACA TEKS (PROGRES DIHAPUS, PAPERCLEAN)
+# 1. BACA TEKS (PAPER-WHITE READER)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
@@ -328,7 +341,6 @@ if st.session_state.selected_book_id is not None:
 
     st.write("")
 
-    # Jika buku pribadi
     if is_priv:
         book_content = st.session_state.private_text_content
     else:
@@ -343,39 +355,58 @@ if st.session_state.selected_book_id is not None:
         st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. HALAMAN "BUKU PRIBADI" (PRIVAT BER-PASSWORD)
+# 2. PANEL BUKU PRIBADI (OTOMATIS BEBAS PASSWORD UNTUK EMAIL ANDA)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
     st.markdown(
-        "<div class='f15-header'>🔒 Area Buku Pribadi</div>",
+        "<div class='f15-header'>🔒 Panel Buku Pribadi</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<div class='f15-sub'>Koleksi Khusus Yang Hanya Bisa Diakses Oleh Anda</div>",
+        "<div class='f15-sub'>Khusus Pengelola & Pemilik Aplikasi</div>",
         unsafe_allow_html=True,
     )
 
-    if not st.session_state.is_authenticated:
-        pwd_input = st.text_input(
-            "Masukkan Kata Sandi Khusus:",
-            type="password",
-            placeholder="Ketik password di sini...",
-        )
-        if st.button("🔓 Buka Akses"):
-            if pwd_input == PRIVATE_PASSWORD:
-                st.session_state.is_authenticated = True
-                st.success("Akses Diterima!")
-                st.rerun()
-            else:
-                st.error("Kata sandi salah!")
+    # Verifikasi Akses Email
+    if (
+        current_user_email is not None
+        and current_user_email.lower() != MY_EMAIL.lower()
+    ):
+        st.error("Akses Ditolak. Panel ini hanya dapat diakses oleh pemilik.")
     else:
-        st.success("🔑 Status: Akses Terverifikasi")
-        if st.button("🔒 Kunci Kembali"):
-            st.session_state.is_authenticated = False
-            st.rerun()
+        st.success("✅ Akses Terverifikasi Otomatis via Email")
 
         st.divider()
-        st.subheader("📚 Daftar Buku Pribadi Anda")
+        st.subheader("➕ Tambah Buku Pribadi Baru")
+        new_title = st.text_input(
+            "Judul Buku:", placeholder="Masukkan judul..."
+        )
+        new_author = st.text_input(
+            "Penulis:", placeholder="Masukkan nama penulis..."
+        )
+        new_content = st.text_area(
+            "Isi Naskah Buku (Teks Polos):",
+            height=200,
+            placeholder="Ketik atau tempel naskah di sini...",
+        )
+
+        if st.button("💾 Simpan Buku Pribadi"):
+            if new_title and new_content:
+                p_key = f"priv_{len(PRIVATE_BOOKS) + 1}"
+                PRIVATE_BOOKS[p_key] = {
+                    "title": new_title,
+                    "author": new_author if new_author else "Pribadi",
+                    "content": new_content,
+                }
+                st.success(
+                    f"Buku '{new_title}' berhasil ditambahkan ke koleksi pribadi!"
+                )
+                st.rerun()
+            else:
+                st.warning("Judul dan isi naskah wajib diisi.")
+
+        st.divider()
+        st.subheader("📚 Koleksi Buku Pribadi Anda")
 
         for p_id, p_info in PRIVATE_BOOKS.items():
             st.write(f"**{p_info['title']}**")
