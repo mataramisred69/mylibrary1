@@ -1,6 +1,5 @@
 import math
 import random
-
 from engine import GutenbergEngine
 import requests
 import streamlit as st
@@ -24,7 +23,6 @@ st.set_page_config(
 # --- FUNGSI AMBIL TEKS OTOMATIS (ANTI 404) ---
 @st.cache_data(show_spinner="Memuat isi buku...")
 def fetch_book_text(book_id):
-    # Daftar variasi URL yang mungkin digunakan oleh Project Gutenberg
     urls = [
         f"https://www.gutenberg.org/files/{book_id}/{book_id}-0.txt",
         f"https://www.gutenberg.org/ebooks/{book_id}.txt.utf-8",
@@ -36,7 +34,6 @@ def fetch_book_text(book_id):
         try:
             res = requests.get(url, timeout=5)
             if res.status_code == 200:
-                # Mengembalikan isi teks jika berhasil ditemukan
                 return res.text
         except Exception:
             continue
@@ -63,7 +60,7 @@ if "reading_progress" not in st.session_state:
 if "active_view" not in st.session_state:
     st.session_state.active_view = "catalog"
 
-# CSS LIGHT MODE (CLEAN, ULTRA FAST, RESPONSIVE 2 KOLOM DI HP)
+# CSS LIGHT MODE + READER PAPER-WHITE DENGAN FONT TAJAM & TERANG
 st.markdown(
     """
     <style>
@@ -141,6 +138,24 @@ st.markdown(
         border-radius: 12px;
         margin-bottom: 8px;
     }
+
+    /* CUSTOM CONTAINER BACA TERANG & TAJAM */
+    .paper-reader {
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 12px !important;
+        padding: 24px !important;
+        height: 680px !important;
+        overflow-y: scroll !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05) !important;
+        font-family: 'Georgia', 'Cambria', 'Times New Roman', serif !important;
+        font-size: 18px !important;
+        line-height: 1.8 !important;
+        color: #0f172a !important;
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+    }
+
     @media (max-width: 640px) {
         [data-testid="column"] {
             width: 50% !important;
@@ -155,6 +170,11 @@ st.markdown(
         }
         .cover-box-f15 { height: 130px !important; }
         .title-f15 { font-size: 12px !important; height: 32px !important; }
+        .paper-reader {
+            font-size: 16px !important;
+            padding: 14px !important;
+            height: 550px !important;
+        }
     }
     .stButton>button {
         background-color: #ffffff !important;
@@ -239,7 +259,7 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. BACA TEKS LANGSUNG DI WEB (NATIVE READER ANTI 404)
+# 1. BACA TEKS TERANG & TAJAM (PAPER-WHITE READER)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
@@ -297,9 +317,10 @@ if st.session_state.selected_book_id is not None:
     book_content = fetch_book_text(b_id)
 
     if book_content:
-        # Menampilkan teks langsung di elemen lokal Streamlit
-        st.text_area(
-            "📖 Naskah Buku:", value=book_content, height=650, disabled=True
+        # Render HTML khusus Mode Kertas Putih Bersih
+        st.markdown(
+            f'<div class="paper-reader">{book_content}</div>',
+            unsafe_allow_html=True,
         )
     else:
         st.error("Naskah teks tidak dapat diunduh secara langsung.")
