@@ -1,3 +1,4 @@
+import base64
 import math
 import os
 import random
@@ -28,9 +29,44 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# --- KONFIGURASI PEMILIK ---
-MY_EMAIL = "mataramisred69@gmail.com"
-OWNER_PASSWORD = "farabi12"
+# --- KONFIGURASI PEMILIK & GITHUB ---
+MY_EMAIL = "sahjihanfarabi@gmail.com"
+OWNER_PASSWORD = "f15rahasia"
+
+# Konfigurasi Repositori GitHub Anda
+GITHUB_REPO = "mylibrary1"  # Nama repo Anda
+GITHUB_USER = "mataramisred69"  # Username GitHub Anda (sesuaikan jika berbeda)
+
+
+# --- FUNGSI SAVE FILE LANGSUNG KE GITHUB VIA API ---
+def push_file_to_github(file_path_in_repo, content_bytes, commit_message):
+    token = st.secrets.get("GITHUB_TOKEN", None)
+    if not token:
+        return False, "GITHUB_TOKEN belum diatur di Streamlit Secrets."
+
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{file_path_in_repo}"
+    headers = {
+        "Authorization": f"token {token}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
+    # Cek apakah file sudah ada untuk mendapatkan sha (jika overwrite)
+    res_get = requests.get(url, headers=headers)
+    sha = None
+    if res_get.status_code == 200:
+        sha = res_get.json().get("sha")
+
+    b64_content = base64.b64encode(content_bytes).decode("utf-8")
+
+    payload = {"message": commit_message, "content": b64_content}
+    if sha:
+        payload["sha"] = sha
+
+    res_put = requests.put(url, json=payload, headers=headers)
+    if res_put.status_code in [200, 201]:
+        return True, "Berhasil tersimpan ke GitHub!"
+    else:
+        return False, f"Gagal API: {res_put.status_code} - {res_put.text}"
 
 
 # --- FUNGSI VERIFIKASI PEMILIK ---
@@ -79,27 +115,33 @@ def fetch_book_text(book_id):
     return None
 
 
-# --- FUNGSI BACA BUKU PRIBADI DARI FOLDER GITHUB ---
+# --- FUNGSI BACA BUKU & SAMPUL PRIBADI DARI FOLDER GITHUB ---
 def load_github_private_books():
     private_dir = "private_books"
     books = {}
 
     if os.path.exists(private_dir):
         files = os.listdir(private_dir)
+        # Cari file teks / pdf
         for idx, filename in enumerate(files):
             filepath = os.path.join(private_dir, filename)
-            if os.path.isfile(filepath):
-                clean_title = os.path.splitext(filename)[0].replace("_", " ").title()
+            ext = os.path.splitext(filename)[1].lower()
+
+            if ext in [".txt", ".pdf"]:
+                base_name = os.path.splitext(filename)[0]
+                clean_title = base_name.replace("_", " ").title()
                 content = ""
 
-                if filename.endswith(".txt"):
+                if ext == ".txt":
                     try:
-                        with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                        with open(
+                            filepath, "r", encoding="utf-8", errors="ignore"
+                        ) as f:
                             content = f.read()
                     except Exception:
                         content = "Gagal membaca isi file teks."
 
-                elif filename.endswith(".pdf") and HAS_PYPDF:
+                elif ext == ".pdf" and HAS_PYPDF:
                     try:
                         reader = pypdf.PdfReader(filepath)
                         pages_text = []
@@ -112,12 +154,29 @@ def load_github_private_books():
                     except Exception:
                         content = "Gagal mengekstrak teks dari file PDF."
 
+                # Cari apakah ada sampul pasangan (misal: komet.jpg / komet.png)
+                cover_url = f"https://via.placeholder.com/150x200?text={clean_title.replace(' ', '+')}"
+                for img_ext in [".jpg", ".jpeg", ".png"]:
+                    possible_cover = os.path.join(
+                        private_dir, f"{base_name}{img_ext}"
+                    )
+                    if os.path.exists(possible_cover):
+                        try:
+                            with open(possible_cover, "rb") as img_f:
+                                img_b64 = base64.b64encode(
+                                    img_f.read()
+                                ).decode()
+                                cover_url = f"data:image/{img_ext.replace('.', '')};base64,{img_b64}"
+                        except Exception:
+                            pass
+                        break
+
                 if content:
                     books[f"gh_priv_{idx}"] = {
                         "title": clean_title,
                         "author": "Pribadi",
                         "content": content,
-                        "cover": f"https://via.placeholder.com/150x200?text={clean_title.replace(' ', '+')}",
+                        "cover": cover_url,
                     }
     return books
 
@@ -408,7 +467,7 @@ if st.session_state.selected_book_id is not None:
             st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. PANEL BUKU PRIBADI (AUTO SINKRONISASI DARI GITHUB)
+# 2. PANEL BUKU PRIBADI (DENGAN AUTO-SAVE GITHUB)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
     st.markdown(
@@ -416,7 +475,7 @@ elif st.session_state.active_view == "private_vault":
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<div class='f15-sub'>Koleksi Khusus Tersimpan Permanen dari GitHub</div>",
+        "<div class='f15-sub'>Upload & Simpan Permanen Langsung ke GitHub</div>",
         unsafe_allow_html=True,
     )
 
@@ -439,6 +498,83 @@ elif st.session_state.active_view == "private_vault":
         if st.button("🔒 Keluar / Kunci Kembali"):
             st.session_state.owner_authenticated = False
             st.rerun()
+
+        st.divider()
+        st.subheader("➕ Tambah Buku Pribadi Baru ke GitHub")
+
+        new_title = st.text_input(
+            "Judul Buku:", placeholder="Masukkan judul..."
+        )
+        cover_file = st.file_uploader(
+            "🖼️ Upload Sampul Buku (JPG/PNG):", type=["jpg", "jpeg", "png"]
+        )
+
+        st.markdown("---")
+        upload_mode = st.radio(
+            "Pilih Metode Naskah:",
+            ["📁 Upload File Naskah (TXT)", "✍️ Ketik / Paste Manual"],
+        )
+
+        file_bytes_to_push = None
+        text_content_to_push = ""
+
+        if upload_mode == "📁 Upload File Naskah (TXT)":
+            text_file = st.file_uploader(
+                "Upload File Naskah (.txt):", type=["txt"]
+            )
+            if text_file is not None:
+                file_bytes_to_push = text_file.getvalue()
+        else:
+            text_content_to_push = st.text_area(
+                "Isi Naskah Buku (Teks Polos):",
+                height=200,
+                placeholder="Ketik atau tempel naskah di sini...",
+            )
+
+        if st.button("💾 Simpan Otomatis ke GitHub", use_container_width=True):
+            if new_title and (file_bytes_to_push or text_content_to_push):
+                slug_name = (
+                    new_title.lower()
+                    .replace(" ", "_")
+                    .replace("'", "")
+                    .replace('"', "")
+                )
+
+                # 1. Save File Teks ke private_books/slug.txt
+                txt_filename = f"private_books/{slug_name}.txt"
+                if file_bytes_to_push:
+                    txt_bytes = file_bytes_to_push
+                else:
+                    txt_bytes = text_content_to_push.encode("utf-8")
+
+                success_txt, msg_txt = push_file_to_github(
+                    txt_filename,
+                    txt_bytes,
+                    f"Add private book text: {new_title}",
+                )
+
+                # 2. Save Sampul jika ada ke private_books/slug.jpg
+                if cover_file is not None and success_txt:
+                    img_ext = os.path.splitext(cover_file.name)[1].lower()
+                    img_filename = f"private_books/{slug_name}{img_ext}"
+                    push_file_to_github(
+                        img_filename,
+                        cover_file.getvalue(),
+                        f"Add cover for {new_title}",
+                    )
+
+                if success_txt:
+                    st.success(
+                        f"Buku '{new_title}' dan sampulnya berhasil tersimpan permanen di GitHub!"
+                    )
+                    st.info(
+                        "Streamlit Cloud sedang memperbarui data... Halaman akan dimuat ulang."
+                    )
+                    st.rerun()
+                else:
+                    st.error(f"Gagal menyimpan ke GitHub: {msg_txt}")
+            else:
+                st.warning("Judul dan isi naskah wajib diisi.")
 
         st.divider()
 
@@ -477,7 +613,6 @@ elif st.session_state.active_view == "private_vault":
                                 st.rerun()
         else:
             st.info("Belum ada file buku di dalam folder `private_books/` di GitHub.")
-            st.caption("Petunjuk: Buka GitHub repository Anda di laptop, buat folder `private_books/`, lalu upload file naskah .txt atau .pdf ke dalamnya.")
 
 # ==========================================
 # 3. HALAMAN "BUKU SAYA" (BOOKMARK)
