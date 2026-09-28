@@ -21,7 +21,7 @@ st.set_page_config(
 
 # --- KONFIGURASI EMAIL PEMILIK (AKSES OTOMATIS) ---
 # Masukkan email Google/GitHub yang Anda gunakan di Streamlit Cloud
-MY_EMAIL = "mataramisred69@gmail.com"
+MY_EMAIL = "farabitharkan@gmail.com"
 
 # --- DATABASE BUKU PRIBADI (KHUSUS PEMILIK EMAIL) ---
 PRIVATE_BOOKS = {
