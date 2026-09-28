@@ -5,7 +5,7 @@ import requests
 import streamlit as st
 from engine import GutenbergEngine
 
-# Impor pypdf untuk membaca file PDF jika di-upload
+# Impor pypdf untuk ekstraksi teks PDF
 try:
     import pypdf
 
@@ -22,24 +22,25 @@ def get_engine():
 engine = get_engine()
 
 st.set_page_config(
-    page_title=" MyLibrary",
+    page_title="Pro Digital Library",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # --- KONFIGURASI PEMILIK ---
-MY_EMAIL = "mataramisred69@gmail.com"
-OWNER_PASSWORD = "farabi12"
+MY_EMAIL = "sahjihanfarabi@gmail.com"
+OWNER_PASSWORD = "f15rahasia"
 
 # --- DATABASE BUKU PRIBADI ---
 if "private_books_db" not in st.session_state:
     st.session_state.private_books_db = {
         "priv_1": {
-            "title": "Buku Saya",
+            "title": "Buku Catatan Rahasia Saya",
             "author": "Penulis Pribadi",
-            "content": " contoh .",
+            "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya Anda yang bisa melihat halaman ini.",
             "cover": "https://via.placeholder.com/150x200?text=Buku+Pribadi",
+            "is_pdf_b64": False,
         }
     }
 
@@ -101,6 +102,8 @@ if "is_private_book" not in st.session_state:
     st.session_state.is_private_book = False
 if "private_text_content" not in st.session_state:
     st.session_state.private_text_content = ""
+if "is_pdf_b64" not in st.session_state:
+    st.session_state.is_pdf_b64 = False
 
 if "search_input" not in st.session_state:
     st.session_state.search_input = ""
@@ -257,7 +260,7 @@ with st.sidebar:
 
     col_m1, col_m2 = st.columns(2)
     with col_m1:
-        if st.button(" Jelajah", use_container_width=True):
+        if st.button("🌐 Jelajah", use_container_width=True):
             st.session_state.active_view = "catalog"
             st.rerun()
     with col_m2:
@@ -271,7 +274,7 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-    st.header(" Kategori Lengkap")
+    st.header("✨ Kategori Lengkap")
 
     categories = [
         {"label": "🩺 Ilmu Medis & Kesehatan", "query": "Medicine"},
@@ -326,6 +329,7 @@ if st.session_state.selected_book_id is not None:
     b_title = st.session_state.selected_book_title
     b_author = st.session_state.selected_book_author
     is_priv = st.session_state.is_private_book
+    is_pdf = st.session_state.is_pdf_b64
 
     col_back, col_save = st.columns([2, 1])
     with col_back:
@@ -360,20 +364,29 @@ if st.session_state.selected_book_id is not None:
     st.write("")
 
     if is_priv:
-        book_content = st.session_state.private_text_content
+        if is_pdf:
+            # Tampilkan PDF Viewer langsung
+            pdf_b64 = st.session_state.private_text_content
+            pdf_display = f'<iframe src="data:application/pdf;base64,{pdf_b64}" width="100%" height="700px" type="application/pdf"></iframe>'
+            st.markdown(pdf_display, unsafe_allow_html=True)
+        else:
+            book_content = st.session_state.private_text_content
+            st.markdown(
+                f'<div class="paper-reader">{book_content}</div>',
+                unsafe_allow_html=True,
+            )
     else:
         book_content = fetch_book_text(b_id)
-
-    if book_content:
-        st.markdown(
-            f'<div class="paper-reader">{book_content}</div>',
-            unsafe_allow_html=True,
-        )
-    else:
-        st.error("Naskah teks tidak dapat diunduh secara langsung.")
+        if book_content:
+            st.markdown(
+                f'<div class="paper-reader">{book_content}</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. PANEL BUKU PRIBADI (DENGAN SAFE .get COVER)
+# 2. PANEL BUKU PRIBADI (PDF EMBED & EKSTRAKSI Sempurna)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
     st.markdown(
@@ -408,7 +421,6 @@ elif st.session_state.active_view == "private_vault":
         st.divider()
         st.subheader("➕ Tambah Buku Pribadi Baru")
 
-        # Form Metadata
         new_title = st.text_input(
             "Judul Buku:", placeholder="Masukkan judul..."
         )
@@ -416,7 +428,6 @@ elif st.session_state.active_view == "private_vault":
             "Penulis:", placeholder="Masukkan nama penulis..."
         )
 
-        # Upload Sampul Gambar
         cover_file = st.file_uploader(
             "🖼️ Upload Sampul Buku (JPG/PNG):", type=["jpg", "jpeg", "png"]
         )
@@ -428,6 +439,7 @@ elif st.session_state.active_view == "private_vault":
         )
 
         final_content = ""
+        is_pdf_file = False
 
         if upload_mode == "📁 Upload File Naskah (TXT / PDF)":
             text_file = st.file_uploader(
@@ -437,16 +449,30 @@ elif st.session_state.active_view == "private_vault":
                 if text_file.name.endswith(".txt"):
                     final_content = text_file.read().decode("utf-8", errors="ignore")
                 elif text_file.name.endswith(".pdf"):
+                    # Ekstraksi teks via pypdf
+                    extracted_text = ""
                     if HAS_PYPDF:
-                        reader = pypdf.PdfReader(text_file)
-                        extracted_text = []
-                        for page in reader.pages:
-                            t = page.extract_text()
-                            if t:
-                                extracted_text.append(t)
-                        final_content = "\n\n".join(extracted_text)
+                        try:
+                            reader = pypdf.PdfReader(text_file)
+                            pages_text = []
+                            for page in reader.pages:
+                                t = page.extract_text()
+                                if t:
+                                    pages_text.append(t)
+                            extracted_text = "\n\n".join(pages_text)
+                        except Exception:
+                            extracted_text = ""
+
+                    # Jika teks berhasil diekstrak dari PDF
+                    if extracted_text and len(extracted_text.strip()) > 50:
+                        final_content = extracted_text
                     else:
-                        final_content = text_file.read().decode("utf-8", errors="ignore")
+                        # Jika PDF berupa scan/gambar, simpan sebagai PDF Viewer Base64
+                        text_file.seek(0)
+                        pdf_bytes = text_file.read()
+                        final_content = base64.b64encode(pdf_bytes).decode()
+                        is_pdf_file = True
+
         else:
             final_content = st.text_area(
                 "Isi Naskah Buku (Teks Polos):",
@@ -470,6 +496,7 @@ elif st.session_state.active_view == "private_vault":
                     "author": new_author if new_author else "Pribadi",
                     "content": final_content,
                     "cover": final_cover,
+                    "is_pdf_b64": is_pdf_file,
                 }
                 st.success(
                     f"Buku '{new_title}' berhasil ditambahkan ke koleksi pribadi!"
@@ -489,7 +516,6 @@ elif st.session_state.active_view == "private_vault":
                 for j in range(cols_per_row):
                     if i + j < len(priv_items):
                         p_id, p_info = priv_items[i + j]
-                        # Menggunakan .get() agar aman jika 'cover' belum ada
                         cover_url = p_info.get(
                             "cover",
                             "https://via.placeholder.com/150x200?text=Buku+Pribadi",
@@ -513,6 +539,7 @@ elif st.session_state.active_view == "private_vault":
                                 st.session_state.selected_book_author = p_info["author"]
                                 st.session_state.is_private_book = True
                                 st.session_state.private_text_content = p_info["content"]
+                                st.session_state.is_pdf_b64 = p_info.get("is_pdf_b64", False)
                                 st.rerun()
 
 # ==========================================
@@ -559,6 +586,7 @@ elif st.session_state.active_view == "my_library":
                                 "author"
                             ]
                             st.session_state.is_private_book = False
+                            st.session_state.is_pdf_b64 = False
                             st.rerun()
     else:
         st.info("Belum ada buku yang disimpan di bookmark.")
@@ -568,7 +596,7 @@ elif st.session_state.active_view == "my_library":
 # ==========================================
 else:
     st.markdown(
-        "<div class='f15-header'>MyLibrary</div>",
+        "<div class='f15-header'>Pro Digital Library</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -579,7 +607,7 @@ else:
     search_query = st.text_input(
         "",
         value=st.session_state.search_input,
-        placeholder=" Cari Judul ",
+        placeholder="🔍 Cari Judul, Penulis, Topik, Medis, Pengembangan Diri...",
         label_visibility="collapsed",
     )
 
@@ -652,6 +680,7 @@ else:
                             st.session_state.selected_book_title = b_title
                             st.session_state.selected_book_author = b_author
                             st.session_state.is_private_book = False
+                            st.session_state.is_pdf_b64 = False
                             st.rerun()
 
                         st.write("")
