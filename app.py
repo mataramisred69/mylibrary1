@@ -13,7 +13,7 @@ def get_engine():
 engine = get_engine()
 
 st.set_page_config(
-    page_title="Pro Digital Library",
+    page_title= " MyLibrary",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
