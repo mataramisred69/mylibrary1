@@ -13,7 +13,7 @@ def get_engine():
 engine = get_engine()
 
 st.set_page_config(
-    page_title= " MyLibrary",
+    page_title="MyLibrary",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -157,7 +157,7 @@ with st.sidebar:
 
     col_m1, col_m2 = st.columns(2)
     with col_m1:
-        if st.button("🌐 Jelajah", use_container_width=True):
+        if st.button(" Jelajah", use_container_width=True):
             st.session_state.active_view = "catalog"
             st.rerun()
     with col_m2:
@@ -170,16 +170,16 @@ with st.sidebar:
     st.header(" Kategori Lengkap")
 
     categories = [
-        {"label": "🩺 Ilmu Medis & Kesehatan", "query": "Medicine"},
-        {"label": "🧠 Pengembangan Diri & Sukses", "query": "Success"},
-        {"label": "💡 Filsafat & Psikologi", "query": "Philosophy"},
-        {"label": "📈 Bisnis & Ekonomi", "query": "Economics"},
-        {"label": "🔍 Petualangan & Detektif", "query": "Holmes"},
-        {"label": "🚀 Sains & Fiksi Ilmiah", "query": "Science"},
-        {"label": "📜 Sejarah & Biografi", "query": "History"},
-        {"label": "🏰 Fantasi & Dongeng", "query": "Wonderland"},
-        {"label": "🎭 Romance & Klasik", "query": "Love"},
-        {"label": "🏛️ Politik & Hukum", "query": "Politics"},
+        {"label": " Ilmu Medis & Kesehatan", "query": "Medicine"},
+        {"label": " Pengembangan Diri & Sukses", "query": "Success"},
+        {"label": " Filsafat & Psikologi", "query": "Philosophy"},
+        {"label": " Bisnis & Ekonomi", "query": "Economics"},
+        {"label": " Petualangan & Detektif", "query": "Holmes"},
+        {"label": " Sains & Fiksi Ilmiah", "query": "Science"},
+        {"label": " Sejarah & Biografi", "query": "History"},
+        {"label": " Fantasi & Dongeng", "query": "Wonderland"},
+        {"label": " Romance & Klasik", "query": "Love"},
+        {"label": " Politik & Hukum", "query": "Politics"},
     ]
 
     for cat in categories:
@@ -284,7 +284,7 @@ elif st.session_state.active_view == "my_library":
         unsafe_allow_html=True,
     )
 
-    st.subheader("🔥 Lanjut Baca")
+    st.subheader(" Lanjut Baca")
     reading_list = st.session_state.reading_progress
 
     if reading_list:
@@ -360,7 +360,7 @@ else:
     search_query = st.text_input(
         "",
         value=st.session_state.search_input,
-        placeholder=" Cari Judul ",
+        placeholder=" Cari Judul",
         label_visibility="collapsed",
     )
 
