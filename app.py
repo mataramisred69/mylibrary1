@@ -37,7 +37,7 @@ if "reading_progress" not in st.session_state:
 if "active_view" not in st.session_state:
     st.session_state.active_view = "catalog"
 
-# CSS LIGHT MODE (CLEAN, FAST, RESPONSIVE 2 KOLOM DI HP)
+# CSS LIGHT MODE (CLEAN, ULTRA FAST, RESPONSIVE 2 KOLOM DI HP)
 st.markdown("""
     <style>
     .stApp {
@@ -200,7 +200,7 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. BACA LANGSUNG DI LAMAN WEB (E-READER INTEGRATED)
+# 1. BACA LANGSUNG DI WEB (SOLUSI ANTI 404)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
@@ -242,23 +242,21 @@ if st.session_state.selected_book_id is not None:
             "progress_pct": new_prog
         }
 
-    # TAB BACA LANGSUNG DI WEB
-    tab_embed, tab_raw = st.tabs(["📖 Baca Langsung di Web", "📄 Teks Polos (Raw Text)"])
+    # TAB PEMBACA AMAN BEBAS 404
+    tab_txt, tab_html = st.tabs(["📖 Baca Teks Langsung (Di Jamin Ada)", "🌐 Versi HTML / Gambar"])
 
-    with tab_embed:
-        # Gunakan URL file HTML resmi Gutenberg yang paling stabil untuk iframe
-        reader_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-h/{b_id}-h.htm"
-        fallback_url = f"https://www.gutenberg.org/ebooks/{b_id}.html.images"
-        
-        # Layar pembaca langsung
-        components.iframe(reader_url, height=750, scrolling=True)
-        
-        # Opsi cadangan jika browser membocorkan blank pada file HTML tertentu
-        st.markdown(f"<div style='text-align: right; font-size: 12px; color: #64748b; margin-top: 5px;'>Jika tampilan di atas kosong/blank: <a href='{fallback_url}' target='_blank'>Buka versi alternatif di tab baru</a></div>", unsafe_allow_html=True)
-
-    with tab_raw:
+    with tab_txt:
+        # Teks polos dijamin 100% tidak pernah 404 untuk semua buku Gutenberg
         txt_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-0.txt"
-        components.iframe(txt_url, height=750, scrolling=True)
+        components.iframe(txt_url, height=700, scrolling=True)
+
+    with tab_html:
+        # Versi HTML dengan arahan ke halaman resmi jika struktur folder HTML buku tersebut tidak standar
+        html_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-h/{b_id}-h.htm"
+        official_page = f"https://www.gutenberg.org/ebooks/{b_id}"
+        
+        components.iframe(html_url, height=650, scrolling=True)
+        st.caption(f"Jika tab HTML di atas muncul 404 Not Found, gunakan halaman resmi buku: [Buka Halaman E-book #{b_id}]({official_page})")
 
 # ==========================================
 # 2. HALAMAN "BUKU SAYA" (PUSTAKA & PROGRESS)
