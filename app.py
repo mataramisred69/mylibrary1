@@ -1,9 +1,9 @@
 import base64
 import math
 import random
-from engine import GutenbergEngine
 import requests
 import streamlit as st
+from engine import GutenbergEngine
 
 # Impor pypdf untuk membaca file PDF jika di-upload
 try:
@@ -22,7 +22,7 @@ def get_engine():
 engine = get_engine()
 
 st.set_page_config(
-    page_title=" MyLibrary",
+    page_title="Pro Digital Library",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -30,13 +30,13 @@ st.set_page_config(
 
 # --- KONFIGURASI PEMILIK ---
 MY_EMAIL = "mataramisred69@gmail.com"
-OWNER_PASSWORD = "farabi12"  # Silakan ganti password ini jika ingin diganti
+OWNER_PASSWORD = "farabi12"
 
 # --- DATABASE BUKU PRIBADI ---
 if "private_books_db" not in st.session_state:
     st.session_state.private_books_db = {
         "priv_1": {
-            "title": "Buku ",
+            "title": "Buku Catatan Rahasia Saya",
             "author": "Penulis Pribadi",
             "content": "Ini adalah contoh isi naskah buku pribadi Anda. Hanya Anda yang bisa melihat halaman ini.",
             "cover": "https://via.placeholder.com/150x200?text=Buku+Pribadi",
@@ -253,7 +253,7 @@ user_is_owner = is_owner_verified()
 # SIDEBAR: NAVIGASI & KATEGORI LENGKAP
 # ==========================================
 with st.sidebar:
-    st.title(" Navigasi Menu")
+    st.title("📚 Navigasi Menu")
 
     col_m1, col_m2 = st.columns(2)
     with col_m1:
@@ -262,11 +262,11 @@ with st.sidebar:
             st.rerun()
     with col_m2:
         saved_count = len(st.session_state.saved_books)
-        if st.button(f" Buku Saya ({saved_count})", use_container_width=True):
+        if st.button(f"🔖 Buku Saya ({saved_count})", use_container_width=True):
             st.session_state.active_view = "my_library"
             st.rerun()
 
-    if st.button(" Panel Buku Pribadi", use_container_width=True):
+    if st.button("🔒 Panel Buku Pribadi", use_container_width=True):
         st.session_state.active_view = "private_vault"
         st.rerun()
 
@@ -274,16 +274,16 @@ with st.sidebar:
     st.header(" Kategori Lengkap")
 
     categories = [
-        {"label": " Ilmu Medis & Kesehatan", "query": "Medicine"},
-        {"label": " Pengembangan Diri & Sukses", "query": "Success"},
-        {"label": " Filsafat & Psikologi", "query": "Philosophy"},
-        {"label": " Bisnis & Ekonomi", "query": "Economics"},
-        {"label": " Petualangan & Detektif", "query": "Holmes"},
-        {"label": " Sains & Fiksi Ilmiah", "query": "Science"},
-        {"label": " Sejarah & Biografi", "query": "History"},
-        {"label": " Fantasi & Dongeng", "query": "Wonderland"},
-        {"label": " Romance & Klasik", "query": "Love"},
-        {"label": " Politik & Hukum", "query": "Politics"},
+        {"label": "🩺 Ilmu Medis & Kesehatan", "query": "Medicine"},
+        {"label": "🧠 Pengembangan Diri & Sukses", "query": "Success"},
+        {"label": "💡 Filsafat & Psikologi", "query": "Philosophy"},
+        {"label": "📈 Bisnis & Ekonomi", "query": "Economics"},
+        {"label": "🔍 Petualangan & Detektif", "query": "Holmes"},
+        {"label": "🚀 Sains & Fiksi Ilmiah", "query": "Science"},
+        {"label": "📜 Sejarah & Biografi", "query": "History"},
+        {"label": "🏰 Fantasi & Dongeng", "query": "Wonderland"},
+        {"label": "🎭 Romance & Klasik", "query": "Love"},
+        {"label": "🏛️ Politik & Hukum", "query": "Politics"},
     ]
 
     for cat in categories:
@@ -336,7 +336,7 @@ if st.session_state.selected_book_id is not None:
         if not is_priv:
             is_saved = b_id in st.session_state.saved_books
             save_label = (
-                "📌 Tersimpan di Buku Saya" if is_saved else " Simpan Buku"
+                "📌 Tersimpan di Buku Saya" if is_saved else "🔖 Simpan Buku"
             )
             if st.button(save_label, use_container_width=True):
                 if is_saved:
@@ -373,11 +373,11 @@ if st.session_state.selected_book_id is not None:
         st.error("Naskah teks tidak dapat diunduh secara langsung.")
 
 # ==========================================
-# 2. PANEL BUKU PRIBADI (DENGAN FITUR UPLOAD FILE & SAMPUL)
+# 2. PANEL BUKU PRIBADI (DENGAN SAFE .get COVER)
 # ==========================================
 elif st.session_state.active_view == "private_vault":
     st.markdown(
-        "<div class='f15-header'> Panel Buku Pribadi</div>",
+        "<div class='f15-header'>🔒 Panel Buku Pribadi</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -386,13 +386,13 @@ elif st.session_state.active_view == "private_vault":
     )
 
     if not user_is_owner:
-        st.info(" Konfirmasi identitas Anda sebagai pemilik untuk masuk.")
+        st.info("🔒 Konfirmasi identitas Anda sebagai pemilik untuk masuk.")
         input_pass = st.text_input(
             "Masukkan Password Pemilik:",
             type="password",
             placeholder="Ketik password...",
         )
-        if st.button(" login "):
+        if st.button("🔓 Masuk Ke Panel"):
             if input_pass == OWNER_PASSWORD:
                 st.session_state.owner_authenticated = True
                 st.success("Akses Diterima!")
@@ -400,8 +400,8 @@ elif st.session_state.active_view == "private_vault":
             else:
                 st.error("Password salah!")
     else:
-        st.success(" Akses Terverifikasi")
-        if st.button(" Keluar / Kunci Kembali"):
+        st.success("✅ Akses Terverifikasi")
+        if st.button("🔒 Keluar / Kunci Kembali"):
             st.session_state.owner_authenticated = False
             st.rerun()
 
@@ -422,7 +422,6 @@ elif st.session_state.active_view == "private_vault":
         )
 
         st.markdown("---")
-        # Pilihan Metode Isi Naskah: Upload File vs Ketik Manual
         upload_mode = st.radio(
             "Pilih Metode Isi Naskah Buku:",
             ["📁 Upload File Naskah (TXT / PDF)", "✍️ Ketik / Paste Manual"],
@@ -447,7 +446,6 @@ elif st.session_state.active_view == "private_vault":
                                 extracted_text.append(t)
                         final_content = "\n\n".join(extracted_text)
                     else:
-                        st.warning("Library 'pypdf' belum terinstall. Menggunakan pembaca teks standar.")
                         final_content = text_file.read().decode("utf-8", errors="ignore")
         else:
             final_content = st.text_area(
@@ -458,7 +456,6 @@ elif st.session_state.active_view == "private_vault":
 
         if st.button("💾 Simpan Buku Pribadi", use_container_width=True):
             if new_title and final_content:
-                # Olah Gambar Sampul jika Ada
                 if cover_file is not None:
                     bytes_data = cover_file.getvalue()
                     base64_img = base64.b64encode(bytes_data).decode()
@@ -492,12 +489,17 @@ elif st.session_state.active_view == "private_vault":
                 for j in range(cols_per_row):
                     if i + j < len(priv_items):
                         p_id, p_info = priv_items[i + j]
+                        # Menggunakan .get() agar aman jika 'cover' belum ada
+                        cover_url = p_info.get(
+                            "cover",
+                            "https://via.placeholder.com/150x200?text=Buku+Pribadi",
+                        )
                         with cols[j]:
                             st.markdown(
                                 f"""
                                 <div class="book-card-f15">
                                     <div class="cover-box-f15">
-                                        <img src="{p_info['cover']}" class="cover-img-f15" onerror="this.src='https://via.placeholder.com/150x200?text=No+Cover'">
+                                        <img src="{cover_url}" class="cover-img-f15" onerror="this.src='https://via.placeholder.com/150x200?text=No+Cover'">
                                     </div>
                                     <div class="title-f15">{p_info['title']}</div>
                                     <div class="author-f15">oleh {p_info['author']}</div>
@@ -577,7 +579,7 @@ else:
     search_query = st.text_input(
         "",
         value=st.session_state.search_input,
-        placeholder=" Cari Judul",
+        placeholder=" Cari Judul ",
         label_visibility="collapsed",
     )
 
