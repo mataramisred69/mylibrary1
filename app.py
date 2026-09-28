@@ -1,8 +1,9 @@
 import math
 import random
+
 from engine import GutenbergEngine
+import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 
 @st.cache_resource
@@ -13,11 +14,35 @@ def get_engine():
 engine = get_engine()
 
 st.set_page_config(
-    page_title="MyLibrary",
+    page_title="Pro Digital Library",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+
+# --- FUNGSI AMBIL TEKS OTOMATIS (ANTI 404) ---
+@st.cache_data(show_spinner="Memuat isi buku...")
+def fetch_book_text(book_id):
+    # Daftar variasi URL yang mungkin digunakan oleh Project Gutenberg
+    urls = [
+        f"https://www.gutenberg.org/files/{book_id}/{book_id}-0.txt",
+        f"https://www.gutenberg.org/ebooks/{book_id}.txt.utf-8",
+        f"https://www.gutenberg.org/files/{book_id}/{book_id}.txt",
+        f"https://www.gutenberg.org/cache/epub/{book_id}/pg{book_id}.txt",
+    ]
+
+    for url in urls:
+        try:
+            res = requests.get(url, timeout=5)
+            if res.status_code == 200:
+                # Mengembalikan isi teks jika berhasil ditemukan
+                return res.text
+        except Exception:
+            continue
+
+    return None
+
 
 # --- STATE MANAGEMENT ---
 if "selected_book_id" not in st.session_state:
@@ -31,7 +56,6 @@ if "search_input" not in st.session_state:
 if "current_page" not in st.session_state:
     st.session_state.current_page = 1
 
-# Pustaka Pribadi (Saved Books & Reading Progress)
 if "saved_books" not in st.session_state:
     st.session_state.saved_books = {}
 if "reading_progress" not in st.session_state:
@@ -157,7 +181,7 @@ with st.sidebar:
 
     col_m1, col_m2 = st.columns(2)
     with col_m1:
-        if st.button(" Jelajah", use_container_width=True):
+        if st.button("🌐 Jelajah", use_container_width=True):
             st.session_state.active_view = "catalog"
             st.rerun()
     with col_m2:
@@ -167,19 +191,19 @@ with st.sidebar:
             st.rerun()
 
     st.divider()
-    st.header(" Kategori Lengkap")
+    st.header("✨ Kategori Lengkap")
 
     categories = [
-        {"label": " Ilmu Medis & Kesehatan", "query": "Medicine"},
-        {"label": " Pengembangan Diri & Sukses", "query": "Success"},
-        {"label": " Filsafat & Psikologi", "query": "Philosophy"},
-        {"label": " Bisnis & Ekonomi", "query": "Economics"},
-        {"label": " Petualangan & Detektif", "query": "Holmes"},
-        {"label": " Sains & Fiksi Ilmiah", "query": "Science"},
-        {"label": " Sejarah & Biografi", "query": "History"},
-        {"label": " Fantasi & Dongeng", "query": "Wonderland"},
-        {"label": " Romance & Klasik", "query": "Love"},
-        {"label": " Politik & Hukum", "query": "Politics"},
+        {"label": "🩺 Ilmu Medis & Kesehatan", "query": "Medicine"},
+        {"label": "🧠 Pengembangan Diri & Sukses", "query": "Success"},
+        {"label": "💡 Filsafat & Psikologi", "query": "Philosophy"},
+        {"label": "📈 Bisnis & Ekonomi", "query": "Economics"},
+        {"label": "🔍 Petualangan & Detektif", "query": "Holmes"},
+        {"label": "🚀 Sains & Fiksi Ilmiah", "query": "Science"},
+        {"label": "📜 Sejarah & Biografi", "query": "History"},
+        {"label": "🏰 Fantasi & Dongeng", "query": "Wonderland"},
+        {"label": "🎭 Romance & Klasik", "query": "Love"},
+        {"label": "🏛️ Politik & Hukum", "query": "Politics"},
     ]
 
     for cat in categories:
@@ -215,7 +239,7 @@ with st.sidebar:
             st.rerun()
 
 # ==========================================
-# 1. BACA TEKS LANGSUNG DI WEB (100% BEBAS 404 & BEBAS LAG)
+# 1. BACA TEKS LANGSUNG DI WEB (NATIVE READER ANTI 404)
 # ==========================================
 if st.session_state.selected_book_id is not None:
     b_id = st.session_state.selected_book_id
@@ -268,9 +292,21 @@ if st.session_state.selected_book_id is not None:
         }
 
     st.write("")
-    # E-Reader Teks Polos (Raw Text) Langsung di Web
-    txt_url = f"https://www.gutenberg.org/files/{b_id}/{b_id}-0.txt"
-    components.iframe(txt_url, height=750, scrolling=True)
+
+    # AMBIL TEKS BUKU VIA BACKEND
+    book_content = fetch_book_text(b_id)
+
+    if book_content:
+        # Menampilkan teks langsung di elemen lokal Streamlit
+        st.text_area(
+            "📖 Naskah Buku:", value=book_content, height=650, disabled=True
+        )
+    else:
+        st.error("Naskah teks tidak dapat diunduh secara langsung.")
+        fallback_page = f"https://www.gutenberg.org/ebooks/{b_id}"
+        st.info(
+            f"Silakan buka naskah melalui halaman resmi Gutenberg: [Buka Buku #{b_id}]({fallback_page})"
+        )
 
 # ==========================================
 # 2. HALAMAN "BUKU SAYA" (PUSTAKA & PROGRESS)
@@ -284,7 +320,7 @@ elif st.session_state.active_view == "my_library":
         unsafe_allow_html=True,
     )
 
-    st.subheader(" Lanjut Baca")
+    st.subheader("🔥 Lanjut Baca")
     reading_list = st.session_state.reading_progress
 
     if reading_list:
@@ -349,7 +385,7 @@ elif st.session_state.active_view == "my_library":
 # ==========================================
 else:
     st.markdown(
-        "<div class='f15-header'> MyLibrary</div>",
+        "<div class='f15-header'>Pro Digital Library</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
@@ -360,7 +396,7 @@ else:
     search_query = st.text_input(
         "",
         value=st.session_state.search_input,
-        placeholder=" Cari Judul",
+        placeholder="🔍 Cari Judul, Penulis, Topik, Medis, Pengembangan Diri...",
         label_visibility="collapsed",
     )
 
