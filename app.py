@@ -29,8 +29,8 @@ st.set_page_config(
 )
 
 # --- KONFIGURASI PEMILIK ---
-MY_EMAIL = "sahjihanfarabi@gmail.com"
-OWNER_PASSWORD = "f15rahasia"
+MY_EMAIL = "mataramisred69@gmail.com"
+OWNER_PASSWORD = "farabi12"
 
 # --- DATABASE BUKU PRIBADI ---
 if "private_books_db" not in st.session_state:
